@@ -55,7 +55,53 @@ func main() {
 	http.HandleFunc("/prices/new", handlePricesNew(provider))
 	http.HandleFunc("/sync", handleSync(provider))
 	http.HandleFunc("/customers", handleCustomers(provider))
+	http.HandleFunc("/customers/new", handleCustomersNew(provider))
+	http.HandleFunc("/events", handleWebhookEvents(provider))
 	http.ListenAndServe("127.0.0.1:8080", nil)
+}
+
+func handleWebhookEvents(p *pay.StripeProvider) http.HandlerFunc {
+	t := createTemplate(`
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Webhook Events</title>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+	</head>
+	<body>
+		<main>
+			<h1>Webhook Events</h1>
+			<table>
+				<thead>
+					<th>ProviderID</th>
+					<th>EventType</th>
+					<th>Payload</th>
+				</thead>
+				<tbody>
+				{{ range .WebhookEvents }}
+				<tr>
+					<td>{{ .ProviderID }}</td>
+					<td>{{ .EventType }}</td>
+					<td><pre>{{ printf "%s" .Payload }}</pre></td>
+				</tr>
+				{{ end }}
+				</tbody>
+			</table>
+
+		</main>
+	</body>
+</html>
+`)
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
+		events, err := p.Repo().ListAllWebhookEvents()
+		if err != nil {
+			return err
+		}
+
+		return t.Execute(w, map[string]any{
+			"WebhookEvents": events,
+		})
+	})
 }
 
 func handleSync(p *pay.StripeProvider) http.HandlerFunc {
@@ -79,7 +125,6 @@ func handleHome() http.HandlerFunc {
 	<body>
 		<main class="container">
 			<h1>Pay</h1>
-			<p>Payment Microservice</p>
 			<nav>
 				<ol>
 					<li><a href="/plans">Plans</a></li>
@@ -87,7 +132,7 @@ func handleHome() http.HandlerFunc {
 					<li><a href="/customers">Customers</a></li>
 					<li><a href="/subscriptions">Subscriptions</a></li>
 					<li><a href="/events">Webhook Events</a></li>
-					<li><a href="/sync">Sync</a></li>
+					<li><a role="button" href="/sync">Sync</a></li>
 				</ol>
 			</nav>
 		</main>
@@ -205,7 +250,6 @@ func handlePlans(p *pay.StripeProvider) http.HandlerFunc {
 			name := r.Form.Get("name")
 			desc := r.Form.Get("description")
 			active := r.Form.Get("active") == "on"
-
 			err := p.AddPlan(&pay.Plan{
 				Name:        name,
 				Description: desc,
@@ -263,7 +307,7 @@ func handlePrices(p *pay.StripeProvider) http.HandlerFunc {
 	<body>
 		<main class="container">
 			<h1>Prices</h1>
-			<a href="/prices/new">Add</a>
+			<a role="button" href="/prices/new">Add</a>
 			<br>
 			<table>
 				<thead>
@@ -417,22 +461,103 @@ func handlePricesNew(p *pay.StripeProvider) http.HandlerFunc {
 	})
 }
 
+func handleCustomersNew(p *pay.StripeProvider) http.HandlerFunc {
+	html := `
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+		<title>Customers</title>
+	</head>
+	<body>
+		<main class="container">
+			<form method="post" action="/customers/new">
+				<h2>Add Customer</h2>
+				<div>
+					<label for="name">Name</label>
+					<input name="name" id="name" type="text" required>
+				</div>
+				<div>
+					<label for="email">Email</label>
+					<input name="email" id="email" type="email" required>
+				</div>
+				<br>
+				<input type="submit" value="Add Customer">
+			</form>
+		</main>
+	</body>
+</html>`
+
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
+		switch r.Method {
+		case http.MethodPost:
+			if err := r.ParseForm(); err != nil {
+				return err
+			}
+
+			var (
+				name  = r.FormValue("name")
+				email = r.FormValue("email")
+			)
+
+			if err := p.AddCustomer(&pay.Customer{
+				Name:  name,
+				Email: email,
+			}); err != nil {
+				return err
+			}
+
+			http.Redirect(w, r, "/customers", http.StatusSeeOther)
+		default:
+			w.Write([]byte(html))
+		}
+		return nil
+	})
+
+}
+
 func handleCustomers(p *pay.StripeProvider) http.HandlerFunc {
 	t := createTemplate(`
 <!DOCTYPE html>
 <html lang="en">
 	<head>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
 		<title>Customers</title>
 	</head>
 	<body>
-		<h1>Customers</h1>
-		<table>
-		</table>
+		<main class="container">
+			<h1>Customers</h1>
+			<a href="/customers/new">Add Customer</a>
+			<br>
+			<table>
+				<thead>
+					<th>ProviderID</th>
+					<th>Name</th>
+					<th>Email</th>
+				</thead>
+				<tbody>
+				{{ range .Customers }}
+					<tr>
+						<td>{{ .ProviderID }}</td>
+						<td>{{ .Name }}</td>
+						<td>{{ .Email }}</td>
+					</tr>
+				{{ end }}
+				</tbody>
+			</table>
+		</main>
 	</body>
 </html>`)
 
 	return wrap(func(w http.ResponseWriter, r *http.Request) error {
-		return t.Execute(w, nil)
+		customers, err := p.Repo().ListAllCustomers()
+		if err != nil {
+			return err
+		}
+
+		return t.Execute(w, map[string]any{
+			"Customers": customers,
+		})
 	})
 }
 
