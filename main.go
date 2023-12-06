@@ -15,25 +15,30 @@ import (
 )
 
 var (
-	whsec  = os.Getenv("STRIPE_WEBHOOK_SECRET")
-	apikey = os.Getenv("STRIPE_API_KEY")
+	stripeWebhookSecret = os.Getenv("STRIPE_WEBHOOK_SECRET")
+	stripeApiKey        = os.Getenv("STRIPE_API_KEY")
+	pgxConnectionString = os.Getenv("CONNECTION_STRING")
 )
 
 func main() {
-	db, err := sql.Open("pgx", os.Getenv("CONNECTION_STRING"))
+	db, err := sql.Open("pgx", pgxConnectionString)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	provider := pay.NewStripeProvider(&pay.StripeConfig{
 		Repo:          pay.NewEntityRepo(db),
-		Key:           apikey,
-		WebhookSecret: whsec,
+		Key:           stripeApiKey,
+		WebhookSecret: stripeWebhookSecret,
 	})
 
 	if err := provider.Init(context.Background()); err != nil {
 		log.Fatal(err)
 	}
+
+	provider.Repo().OnPlanAdded(func(p *pay.Plan) {
+		fmt.Printf("EVENT: plan added %s", p.Name)
+	})
 
 	fmt.Print("syncing...")
 	if err := provider.Sync(); err != nil {
@@ -49,18 +54,19 @@ func main() {
 	http.HandleFunc("/prices/", handlePrices(provider))
 	http.HandleFunc("/prices/new", handlePricesNew(provider))
 	http.HandleFunc("/sync", handleSync(provider))
+	http.HandleFunc("/customers", handleCustomers(provider))
 	http.ListenAndServe("127.0.0.1:8080", nil)
 }
 
 func handleSync(p *pay.StripeProvider) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
 		if err := p.Sync(); err != nil {
-			writeErr(w, err)
-			return
+			return err
 		}
 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
-	}
+		return nil
+	})
 }
 
 func handleHome() http.HandlerFunc {
@@ -94,7 +100,7 @@ func handleHome() http.HandlerFunc {
 }
 
 func handlePlansNew(p *pay.StripeProvider) http.HandlerFunc {
-	html := `
+	t := createTemplate(`
 <html lang="en">
 	<head>
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
@@ -123,15 +129,12 @@ func handlePlansNew(p *pay.StripeProvider) http.HandlerFunc {
 			</form>
 		</main>
 	</body>
-</html>`
+</html>`)
 
-	t := template.Must(template.New("").Parse(html))
-	return func(w http.ResponseWriter, r *http.Request) {
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
 		if r.Method == http.MethodPost {
 			if err := r.ParseForm(); err != nil {
-				log.Printf("error while parsing form: %v", err)
-				http.Redirect(w, r, "/plans", http.StatusSeeOther)
-				return
+				return fmt.Errorf("error while parsing form: %v", err)
 			}
 
 			name := r.Form.Get("name")
@@ -145,19 +148,20 @@ func handlePlansNew(p *pay.StripeProvider) http.HandlerFunc {
 			})
 
 			if err != nil {
-				log.Printf("error while adding plan: %v", err)
+				return fmt.Errorf("error while adding plan: %v", err)
 			}
 
 			http.Redirect(w, r, "/plans", http.StatusSeeOther)
-			return
+			return nil
 		}
 
-		t.Execute(w, nil)
-	}
+		return t.Execute(w, nil)
+	})
 }
 
 func handlePlans(p *pay.StripeProvider) http.HandlerFunc {
-	html := `
+	t := createTemplate(`
+<!DOCTYPE html>
 <html lang="en">
 	<head>
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
@@ -190,16 +194,12 @@ func handlePlans(p *pay.StripeProvider) http.HandlerFunc {
 			</table>
 		</main>
 	</body>
-</html>`
+</html>`)
 
-	t := template.Must(template.New("").Parse(html))
-
-	return func(w http.ResponseWriter, r *http.Request) {
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
 		if r.Method == http.MethodPost {
 			if err := r.ParseForm(); err != nil {
-				log.Printf("error while parsing form: %v", err)
-				http.Redirect(w, r, "/plans", http.StatusSeeOther)
-				return
+				return err
 			}
 
 			name := r.Form.Get("name")
@@ -213,54 +213,48 @@ func handlePlans(p *pay.StripeProvider) http.HandlerFunc {
 			})
 
 			if err != nil {
-				log.Printf("error while adding plan: %v", err)
+				return err
 			}
 
 			http.Redirect(w, r, "/plans", http.StatusSeeOther)
-			return
+			return nil
 		}
 
 		plans, err := p.Repo().ListPlans()
 		if err != nil {
-			w.Write([]byte(err.Error()))
-			return
+			return err
 		}
 
-		err = t.Execute(w, map[string]any{
+		return t.Execute(w, map[string]any{
 			"Plans": plans,
 		})
-		if err != nil {
-			w.Write([]byte(err.Error()))
-		}
-	}
+	})
 }
 
 func handlePlansDelete(p *pay.StripeProvider) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
 		idQuery := r.URL.Query().Get("id")
 		id, err := strconv.ParseInt(idQuery, 10, 64)
 		if err != nil {
-			writeErr(w, err)
-			return
+			return err
 		}
 
 		pl, err := p.Repo().GetPlanByID(id)
 		if err != nil {
-			writeErr(w, err)
-			return
+			return err
 		}
 
 		if err := p.RemovePlan(pl); err != nil {
-			writeErr(w, err)
-			return
+			return err
 		}
 
 		http.Redirect(w, r, "/plans", http.StatusSeeOther)
-	}
+		return nil
+	})
 }
 
 func handlePrices(p *pay.StripeProvider) http.HandlerFunc {
-	html := `
+	t := createTemplate(`
 <html lang="en">
 	<head>
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
@@ -295,35 +289,27 @@ func handlePrices(p *pay.StripeProvider) http.HandlerFunc {
 			</table>
 		</main>
 	</body>
-</html>`
+</html>`)
 
-	t := template.Must(template.New("prices").Parse(html))
-
-	return func(w http.ResponseWriter, r *http.Request) {
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
 		plans, err := p.Repo().ListPlans()
 		if err != nil {
-			writeErr(w, err)
-			return
+			return err
 		}
 
 		prices, err := p.Repo().ListPrices()
 		if err != nil {
-			writeErr(w, err)
-			return
+			return err
 		}
 
-		err = t.Execute(w, map[string]any{
+		return t.Execute(w, map[string]any{
 			"Plans":   plans,
 			"Prices":  prices,
 			"Monthly": pay.PricingMonthly,
 			"Annual":  pay.PricingAnnual,
 		})
 
-		if err != nil {
-			writeErr(w, err)
-			return
-		}
-	}
+	})
 }
 
 func handlePricesNew(p *pay.StripeProvider) http.HandlerFunc {
@@ -372,12 +358,11 @@ func handlePricesNew(p *pay.StripeProvider) http.HandlerFunc {
 	</body>
 </html>`)
 
-	return func(w http.ResponseWriter, r *http.Request) {
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
 		switch r.Method {
 		case http.MethodPost:
 			if err := r.ParseForm(); err != nil {
-				writeErr(w, err)
-				return
+				return err
 			}
 
 			var (
@@ -390,20 +375,17 @@ func handlePricesNew(p *pay.StripeProvider) http.HandlerFunc {
 
 			parsedAmount, err := strconv.Atoi(amount)
 			if err != nil {
-				writeErr(w, fmt.Errorf("error parsing amount: %w", err))
-				return
+				return fmt.Errorf("error parsing amount: %w", err)
 			}
 
 			parsedPlanID, err := strconv.Atoi(planID)
 			if err != nil {
-				writeErr(w, fmt.Errorf("error parsing plan id: %w", err))
-				return
+				return fmt.Errorf("error parsing plan id: %w", err)
 			}
 
 			parsedTrialDays, err := strconv.Atoi(trialDays)
 			if err != nil {
-				writeErr(w, fmt.Errorf("error parsing trial days: %w", err))
-				return
+				return fmt.Errorf("error parsing trial days: %w", err)
 			}
 
 			pr := pay.Price{
@@ -415,25 +397,24 @@ func handlePricesNew(p *pay.StripeProvider) http.HandlerFunc {
 			}
 
 			if err := p.AddPrice(&pr); err != nil {
-				writeErr(w, fmt.Errorf("error adding price: %w", err))
-				return
+				return fmt.Errorf("error adding price: %w", err)
 			}
 
 			http.Redirect(w, r, "/prices", http.StatusSeeOther)
+			return nil
 		default:
 			plans, err := p.Repo().ListPlans()
 			if err != nil {
-				writeErr(w, err)
-				return
+				return err
 			}
 
-			renderTemplate(t, w, map[string]any{
+			return t.Execute(w, map[string]any{
 				"Plans":   plans,
 				"Monthly": pay.PricingMonthly,
 				"Annual":  pay.PricingAnnual,
 			})
 		}
-	}
+	})
 }
 
 func handleCustomers(p *pay.StripeProvider) http.HandlerFunc {
@@ -448,15 +429,15 @@ func handleCustomers(p *pay.StripeProvider) http.HandlerFunc {
 		<table>
 		</table>
 	</body>
-</html>
-	`)
+</html>`)
 
-	return handle(func(w http.ResponseWriter, r *http.Request) error {
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
 		return t.Execute(w, nil)
 	})
 }
 
 func writeErr(w http.ResponseWriter, err error) {
+	log.Printf("ERROR: %v", err)
 	w.WriteHeader(500)
 	w.Write([]byte(err.Error()))
 }
@@ -467,17 +448,10 @@ func createTemplate(html string) *template.Template {
 
 type wrappedHandlerFunc func(w http.ResponseWriter, r *http.Request) error
 
-func handle(h wrappedHandlerFunc) http.HandlerFunc {
+func wrap(h wrappedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := h(w, r); err != nil {
 			writeErr(w, err)
 		}
-	}
-
-}
-
-func renderTemplate(t *template.Template, w http.ResponseWriter, data map[string]any) {
-	if err := t.Execute(w, data); err != nil {
-		writeErr(w, err)
 	}
 }
