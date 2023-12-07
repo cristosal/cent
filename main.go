@@ -26,37 +26,37 @@ func main() {
 		log.Fatal(err)
 	}
 
-	provider := pay.NewStripeProvider(&pay.StripeConfig{
+	p := pay.NewStripeProvider(&pay.StripeConfig{
 		Repo:          pay.NewEntityRepo(db),
 		Key:           stripeApiKey,
 		WebhookSecret: stripeWebhookSecret,
 	})
 
-	if err := provider.Init(context.Background()); err != nil {
+	if err := p.Init(context.Background()); err != nil {
 		log.Fatal(err)
 	}
 
-	provider.Repo().OnPlanAdded(func(p *pay.Plan) {
+	p.OnPlanAdded(func(p *pay.Plan) {
 		fmt.Printf("EVENT: plan added %s", p.Name)
 	})
 
 	fmt.Print("syncing...")
-	if err := provider.Sync(); err != nil {
+	if err := p.Sync(); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Print(" [OK]\n")
 	fmt.Println("listening on port 8080")
 	http.HandleFunc("/", handleHome())
-	http.HandleFunc("/webhook", provider.Webhook())
-	http.HandleFunc("/plans", handlePlans(provider))
-	http.HandleFunc("/plans/new", handlePlansNew(provider))
-	http.HandleFunc("/plans/delete", handlePlansDelete(provider))
-	http.HandleFunc("/prices/", handlePrices(provider))
-	http.HandleFunc("/prices/new", handlePricesNew(provider))
-	http.HandleFunc("/sync", handleSync(provider))
-	http.HandleFunc("/customers", handleCustomers(provider))
-	http.HandleFunc("/customers/new", handleCustomersNew(provider))
-	http.HandleFunc("/events", handleWebhookEvents(provider))
+	http.HandleFunc("/webhook", p.Webhook())
+	http.HandleFunc("/plans", handlePlans(p))
+	http.HandleFunc("/plans/new", handlePlansNew(p))
+	http.HandleFunc("/plans/delete", handlePlansDelete(p))
+	http.HandleFunc("/prices/", handlePrices(p))
+	http.HandleFunc("/prices/new", handlePricesNew(p))
+	http.HandleFunc("/sync", handleSync(p))
+	http.HandleFunc("/customers", handleCustomers(p))
+	http.HandleFunc("/customers/new", handleCustomersNew(p))
+	http.HandleFunc("/events", handleWebhookEvents(p))
 	http.ListenAndServe("127.0.0.1:8080", nil)
 }
 
@@ -93,7 +93,7 @@ func handleWebhookEvents(p *pay.StripeProvider) http.HandlerFunc {
 </html>
 `)
 	return wrap(func(w http.ResponseWriter, r *http.Request) error {
-		events, err := p.Repo().ListAllWebhookEvents()
+		events, err := p.ListAllWebhookEvents()
 		if err != nil {
 			return err
 		}
@@ -264,7 +264,7 @@ func handlePlans(p *pay.StripeProvider) http.HandlerFunc {
 			return nil
 		}
 
-		plans, err := p.Repo().ListPlans()
+		plans, err := p.ListActivePlans()
 		if err != nil {
 			return err
 		}
@@ -283,7 +283,7 @@ func handlePlansDelete(p *pay.StripeProvider) http.HandlerFunc {
 			return err
 		}
 
-		pl, err := p.Repo().GetPlanByID(id)
+		pl, err := p.GetPlanByID(id)
 		if err != nil {
 			return err
 		}
@@ -336,12 +336,12 @@ func handlePrices(p *pay.StripeProvider) http.HandlerFunc {
 </html>`)
 
 	return wrap(func(w http.ResponseWriter, r *http.Request) error {
-		plans, err := p.Repo().ListPlans()
+		plans, err := p.ListActivePlans()
 		if err != nil {
 			return err
 		}
 
-		prices, err := p.Repo().ListPrices()
+		prices, err := p.ListAllPrices()
 		if err != nil {
 			return err
 		}
@@ -447,7 +447,7 @@ func handlePricesNew(p *pay.StripeProvider) http.HandlerFunc {
 			http.Redirect(w, r, "/prices", http.StatusSeeOther)
 			return nil
 		default:
-			plans, err := p.Repo().ListPlans()
+			plans, err := p.ListActivePlans()
 			if err != nil {
 				return err
 			}
@@ -550,7 +550,7 @@ func handleCustomers(p *pay.StripeProvider) http.HandlerFunc {
 </html>`)
 
 	return wrap(func(w http.ResponseWriter, r *http.Request) error {
-		customers, err := p.Repo().ListAllCustomers()
+		customers, err := p.ListAllCustomers()
 		if err != nil {
 			return err
 		}
