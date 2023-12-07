@@ -14,6 +14,10 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+const (
+	addr = "127.0.0.1:8080"
+)
+
 var (
 	stripeWebhookSecret = os.Getenv("STRIPE_WEBHOOK_SECRET")
 	stripeApiKey        = os.Getenv("STRIPE_API_KEY")
@@ -56,8 +60,168 @@ func main() {
 	http.HandleFunc("/sync", handleSync(p))
 	http.HandleFunc("/customers", handleCustomers(p))
 	http.HandleFunc("/customers/new", handleCustomersNew(p))
+	http.HandleFunc("/subscriptions", handleSubscriptions(p))
 	http.HandleFunc("/events", handleWebhookEvents(p))
-	http.ListenAndServe("127.0.0.1:8080", nil)
+	http.HandleFunc("/checkout", handleCheckout(p))
+	http.HandleFunc("/checkout/success", handleCheckoutSuccess())
+	http.ListenAndServe(addr, nil)
+}
+
+func handleCheckoutSuccess() http.HandlerFunc {
+	html := `
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+		<title>Checkout Success</title>
+	</head>
+	<body>
+		<main class="container">
+			<h1>Success!</h1>
+			<p>Checkout was successful</p>
+			<a href="/">Go Back</a>
+		</main>
+	</body>
+</html>`
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(html))
+	}
+
+}
+
+func handleCheckout(p *pay.StripeProvider) http.HandlerFunc {
+	t := createTemplate(`
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+		<title>Checkout</title>
+	</head>
+	<body>
+		<main class="container">
+			<h1>Checkout</h1>
+			<form method="post" action="/checkout">
+				<div>
+					<label for="customer_id">Customer</label>
+					<select name="customer_id" id="customer_id">
+						{{- range .Customers -}}
+						<option value="{{ .ID }}">{{ .Name }}</option>
+						{{- end -}}
+					</select>
+				</div>
+				<div>
+					<label for="price_id">Price</label>
+					<select name="price_id" id="price_id">
+						{{- range .Prices -}}
+						<option value="{{ .ID }}">{{ .PlanID }} - {{ .Currency }} ${{ .Amount }}/{{ .Schedule }}</option>
+						{{- end -}}
+					</select>
+				</div>
+				<br>
+				<input type="submit" value="Checkout">
+			</form>
+		</main>
+	</body>
+</html>`)
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
+		switch r.Method {
+		case http.MethodPost:
+			var (
+				formCustomerID = r.FormValue("customer_id")
+				formPriceID    = r.FormValue("customer_id")
+			)
+
+			customerID, err := strconv.ParseInt(formCustomerID, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			priceID, err := strconv.ParseInt(formPriceID, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			url, err := p.Checkout(&pay.CheckoutRequest{
+				CustomerID:  customerID,
+				PriceID:     priceID,
+				RedirectURL: "http://" + addr + "/checkout/success",
+			})
+
+			if err != nil {
+				return err
+			}
+
+			http.Redirect(w, r, url, http.StatusSeeOther)
+		default:
+			customers, err := p.ListAllCustomers()
+			if err != nil {
+				return err
+			}
+
+			prices, err := p.ListAllPrices()
+			if err != nil {
+				return err
+			}
+
+			return t.Execute(w, map[string]any{
+				"Customers": customers,
+				"Prices":    prices,
+			})
+
+		}
+		return nil
+	})
+
+}
+
+func handleSubscriptions(p *pay.StripeProvider) http.HandlerFunc {
+	t := createTemplate(`
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Subscriptions</title>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+	</head>
+	<body>
+		<main class="container">
+			<h1>Subscriptions</h1>
+			<table>
+				<thead>
+					<th>ID</th>
+					<th>ProviderID</th>
+					<th>CustomerID</th>
+					<th>PriceID</th>
+					<th>Active</th>
+				</thead>
+				<tbody>
+				{{- range .Subscriptions -}}
+					<tr>
+						<td>{{ .ID }}</td>
+						<td>{{ .ProviderID }}</td>
+						<td>{{ .CustomerID }}</td>
+						<td>{{ .PriceID }}</td>
+						<td>{{ .Active }}</td>
+					</tr>
+				{{- end -}}
+				</tbody>
+			</table>
+		</main>
+	</body>
+</html>`)
+
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
+		subs, err := p.ListAllSubscriptions()
+		if err != nil {
+			return err
+		}
+
+		return t.Execute(w, map[string]any{
+			"Subscriptions": subs,
+		})
+	})
+
 }
 
 func handleWebhookEvents(p *pay.StripeProvider) http.HandlerFunc {
@@ -69,7 +233,7 @@ func handleWebhookEvents(p *pay.StripeProvider) http.HandlerFunc {
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
 	</head>
 	<body>
-		<main>
+		<main class="container">
 			<h1>Webhook Events</h1>
 			<table>
 				<thead>
@@ -132,6 +296,7 @@ func handleHome() http.HandlerFunc {
 					<li><a href="/customers">Customers</a></li>
 					<li><a href="/subscriptions">Subscriptions</a></li>
 					<li><a href="/events">Webhook Events</a></li>
+					<li><a href="/checkout">Checkout</a></li>
 					<li><a role="button" href="/sync">Sync</a></li>
 				</ol>
 			</nav>
@@ -219,6 +384,7 @@ func handlePlans(p *pay.StripeProvider) http.HandlerFunc {
 			<br>
 			<table>
 				<thead>
+					<th>ID</th>
 					<th>Name</th>
 					<th>Description</th>
 					<th>Provider</th>
@@ -228,6 +394,7 @@ func handlePlans(p *pay.StripeProvider) http.HandlerFunc {
 				<tbody>
 				{{- range .Plans -}}
 				<tr>
+					<td>{{ .ID }}</td>
 					<td>{{ .Name }}</td>
 					<td>{{ .Description }}</td>
 					<td>{{ .Provider }}</td>
@@ -307,10 +474,11 @@ func handlePrices(p *pay.StripeProvider) http.HandlerFunc {
 	<body>
 		<main class="container">
 			<h1>Prices</h1>
-			<a role="button" href="/prices/new">Add</a>
+			<a href="/prices/new">Add Price</a>
 			<br>
 			<table>
 				<thead>
+					<th>ID</th>
 					<th>ProviderID</th>
 					<th>Currency</th>
 					<th>Amount</th>
@@ -321,6 +489,7 @@ func handlePrices(p *pay.StripeProvider) http.HandlerFunc {
 				<tbody>
 					{{ range .Prices }}
 					<tr>
+						<td>{{ .ID }}</th>
 						<td>{{ .ProviderID }}</td>
 						<td>{{ .Currency }}</td>
 						<td>{{ .Amount }}</td>
@@ -377,6 +546,13 @@ func handlePricesNew(p *pay.StripeProvider) http.HandlerFunc {
 					<input id="amount" name="amount" type="number">
 				</div>
 				<div>
+					<label for="schedule">Schedule</label>
+					<select id="schedule" name="schedule">
+						<option value="{{ .Monthly }}">Monthly</option>
+						<option value="{{ .Annual }}">Annual</option>
+					</select>
+				</div>
+				<div>
 					<label for="trial_days">Trial Days</label>
 					<input id="trial_days" name="trial_days" type="number">
 				</div>
@@ -384,15 +560,8 @@ func handlePricesNew(p *pay.StripeProvider) http.HandlerFunc {
 					<label for="plan_id">Plan</label>
 					<select id="plan_id" name="plan_id">
 					{{- range .Plans -}}
-						<option value="{{ .ID }}">{{ .Name }}</option>
+						<option value="{{ .ID }}">{{ .ID }} - {{ .Name }}</option>
 					{{- end -}}
-					</select>
-				</div>
-				<div>
-					<label for="schedule">Schedule</label>
-					<select id="schedule" name="schedule">
-						<option value="{{ .Monthly }}">Monthly</option>
-						<option value="{{ .Annual }}">Annual</option>
 					</select>
 				</div>
 				<br>
@@ -452,8 +621,14 @@ func handlePricesNew(p *pay.StripeProvider) http.HandlerFunc {
 				return err
 			}
 
+			prices, err := p.ListAllPrices()
+			if err != nil {
+				return err
+			}
+
 			return t.Execute(w, map[string]any{
 				"Plans":   plans,
+				"Prices":  prices,
 				"Monthly": pay.PricingMonthly,
 				"Annual":  pay.PricingAnnual,
 			})
@@ -531,6 +706,7 @@ func handleCustomers(p *pay.StripeProvider) http.HandlerFunc {
 			<br>
 			<table>
 				<thead>
+					<th>ID</th>
 					<th>ProviderID</th>
 					<th>Name</th>
 					<th>Email</th>
@@ -538,6 +714,7 @@ func handleCustomers(p *pay.StripeProvider) http.HandlerFunc {
 				<tbody>
 				{{ range .Customers }}
 					<tr>
+						<td>{{ .ID }}</td>
 						<td>{{ .ProviderID }}</td>
 						<td>{{ .Name }}</td>
 						<td>{{ .Email }}</td>
