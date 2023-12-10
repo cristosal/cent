@@ -1,6 +1,7 @@
 module github.com/cristosal/micropay
 
 require (
+	github.com/a-h/templ v0.2.476
 	github.com/cristosal/pay v1.0.0
 	github.com/jackc/pgx/v5 v5.5.0
 )

@@ -1,0 +1,290 @@
+package templates
+
+import (
+	"fmt"
+
+	"github.com/cristosal/pay"
+)
+
+templ PlansNew() {
+	@layout("New Plan") {
+		<form method="POST" action="/plans">
+			<h2>Add Plan</h2>
+			<div>
+				<label for="name">Name</label>
+				<input id="name" name="name" type="text"/>
+			</div>
+			<div>
+				<label for="description">Description</label>
+				<input id="description" name="description" type="text"/>
+			</div>
+			<div>
+				<label for="active">
+					Active
+					<input id="active" name="active" type="checkbox"/>
+				</label>
+			</div>
+			<br/>
+			<input type="submit" value="Create Plan"/>
+		</form>
+	}
+}
+
+templ PlansIndex(plans []pay.Plan) {
+	@layout("Plans") {
+		<h1>Plans</h1>
+		<a href="/plans/new">Add Plan</a>
+		<br/>
+		<table>
+			<thead>
+				<th>ID</th>
+				<th>Name</th>
+				<th>Description</th>
+				<th>Provider</th>
+				<th>ProviderID</th>
+				<th>Actions</th>
+			</thead>
+			<tbody>
+				for _, p := range plans {
+					<tr>
+						<td>{ fmt.Sprint(p.ID) }</td>
+						<td>{ p.Name }</td>
+						<td>{ p.Description }</td>
+						<td>{ p.Provider }</td>
+						<td>{ p.ProviderID }</td>
+						<td><a href="/plans/delete?id={ fmt.Sprint(p.ID) }">Del</a></td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}
+
+templ CustomersIndex(customers []pay.Customer) {
+	@layout("Customers") {
+		<h1>Customers</h1>
+		<a href="/customers/new">Add Customer</a>
+		<br/>
+		<table>
+			<thead>
+				<th>ID</th>
+				<th>ProviderID</th>
+				<th>Name</th>
+				<th>Email</th>
+			</thead>
+			<tbody>
+				for _, c := range customers {
+					<tr>
+						<td>{ fmt.Sprint(c.ID) }</td>
+						<td>{ c.ProviderID }</td>
+						<td>{ c.Name }</td>
+						<td>{ c.Email }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}
+
+templ CustomersNew() {
+	@layout("New Customer") {
+		<form method="post" action="/customers/new">
+			<h2>Add Customer</h2>
+			<div>
+				<label for="name">Name</label>
+				<input name="name" id="name" type="text" required/>
+			</div>
+			<div>
+				<label for="email">Email</label>
+				<input name="email" id="email" type="email" required/>
+			</div>
+			<br/>
+			<input type="submit" value="Add Customer"/>
+		</form>
+	}
+}
+
+templ PricesIndex(prices []pay.Price) {
+	@layout("Prices") {
+		<h1>Prices</h1>
+		<a href="/prices/new">Add Price</a>
+		<br/>
+		<table>
+			<thead>
+				<th>ID</th>
+				<th>ProviderID</th>
+				<th>Currency</th>
+				<th>Amount</th>
+				<th>Schedule</th>
+				<th>PlanID</th>
+				<th>Trial Days</th>
+			</thead>
+			<tbody>
+				for _, p := range prices {
+					<tr>
+						<td>{ fmt.Sprint(p.ID) }</td>
+						<td>{ fmt.Sprint(p.ProviderID) }</td>
+						<td>{ fmt.Sprint(p.Currency) }</td>
+						<td>{ fmt.Sprint(p.Amount) }</td>
+						<td>{ fmt.Sprint(p.Schedule) }</td>
+						<td>{ fmt.Sprint(p.PlanID) }</td>
+						<td>{ fmt.Sprint(p.TrialDays) }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}
+
+templ PricesNew(monthly, annual string, plans []pay.Plan) {
+	@layout("New Price") {
+		<form method="post" action="/prices/new">
+			<h2>Add Price</h2>
+			<div>
+				<label for="currenct">Currency</label>
+				<input id="currency" name="currency" type="text"/>
+			</div>
+			<div>
+				<label for="amount">Amount</label>
+				<input id="amount" name="amount" type="number"/>
+			</div>
+			<div>
+				<label for="schedule">Schedule</label>
+				<select id="schedule" name="schedule">
+					<option value={ monthly }>Monthly</option>
+					<option value={ annual }>Annual</option>
+				</select>
+			</div>
+			<div>
+				<label for="trial_days">Trial Days</label>
+				<input id="trial_days" name="trial_days" type="number"/>
+			</div>
+			<div>
+				<label for="plan_id">Plan</label>
+				<select id="plan_id" name="plan_id">
+					for _, p := range plans {
+						<option value={ fmt.Sprint(p.ID) }>{ fmt.Sprint(p.ID) } - { p.Name }</option>
+					}
+				</select>
+			</div>
+			<br/>
+			<input type="submit" value="Create Price"/>
+		</form>
+	}
+}
+
+templ Home() {
+	@layout("Pay") {
+		<h1>Pay</h1>
+		<nav>
+			<ol>
+				<li><a href="/plans">Plans</a></li>
+				<li><a href="/prices">Prices</a></li>
+				<li><a href="/customers">Customers</a></li>
+				<li><a href="/subscriptions">Subscriptions</a></li>
+				<li><a href="/events">Webhook Events</a></li>
+				<li><a href="/checkout">Checkout</a></li>
+				<li><a role="button" href="/sync">Sync</a></li>
+			</ol>
+		</nav>
+	}
+}
+
+templ WebhookIndex(events []pay.WebhookEvent) {
+	@layout("Webhook Events") {
+		<h1>Webhook Events</h1>
+		<table>
+			<thead>
+				<th>ID</th>
+				<th>Type</th>
+				<th>Payload</th>
+			</thead>
+			<tbody>
+				for _, e := range events {
+					<tr>
+						<td>{ fmt.Sprint(e.ID) }</td>
+						<td>{ fmt.Sprint(e.EventType) }</td>
+						<td><pre>{ string(e.Payload) }</pre></td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}
+
+templ SubscriptionsIndex(subscriptions []pay.Subscription) {
+	@layout("Subscriptions") {
+		<h1>Subscriptions</h1>
+		<table>
+			<thead>
+				<th>ID</th>
+				<th>ProviderID</th>
+				<th>CustomerID</th>
+				<th>PriceID</th>
+				<th>Active</th>
+			</thead>
+			<tbody>
+				for _, s := range subscriptions {
+					<tr>
+						<td>{ fmt.Sprint(s.ID) }</td>
+						<td>{ fmt.Sprint(s.ProviderID) }</td>
+						<td>{ fmt.Sprint(s.CustomerID) }</td>
+						<td>{ fmt.Sprint(s.PriceID) }</td>
+						<td>{ fmt.Sprint(s.Active) }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}
+
+templ layout(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<title>{ title }</title>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css"/>
+		</head>
+		<body>
+			<main class="container">
+				{ children... }
+			</main>
+		</body>
+	</html>
+}
+
+templ CheckoutForm(customers []pay.Customer, prices []pay.Price) {
+	@layout("Checkout") {
+		<form method="post" action="/checkout">
+			<h1>Checkout</h1>
+			<div>
+				<label for="customer_id">Customer</label>
+				<select name="customer_id" id="customer_id">
+					for _, c := range customers {
+						<option value="{ c.ID }">{ c.Name }</option>
+					}
+				</select>
+			</div>
+			<div>
+				<label for="price_id">Price</label>
+				<select name="price_id" id="price_id">
+					for _, p := range prices {
+						<option value="{ p.ID }">
+							{ fmt.Sprint(p.PlanID) } - { p.Currency } ${ fmt.Sprint(p.Amount) }/{ p.Schedule }
+						</option>
+					}
+				</select>
+			</div>
+			<br/>
+			<input type="submit" value="Checkout"/>
+		</form>
+	}
+}
+
+templ CheckoutSuccess() {
+	@layout("Checkout Success") {
+		<h1>Success!</h1>
+		<p>Checkout was successful</p>
+		<a href="/">Go Back</a>
+	}
+}
