@@ -96,7 +96,6 @@ func handleSubscriptionsUsersDelete(p *pay.StripeProvider) http.HandlerFunc {
 		}
 
 		redirect := fmt.Sprintf("/subscriptions/users?s=%s", s)
-
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return nil
 	})
@@ -222,19 +221,29 @@ func handleSubscriptions(p *pay.StripeProvider) http.HandlerFunc {
 
 		if username == "" {
 			subs, err = p.ListAllSubscriptions()
+			if errors.Is(err, orm.ErrNotFound) {
+				err = nil
+			}
+
 			if err != nil {
 				return err
 			}
 		} else {
 			sub, err := p.GetSubscriptionByUsername(username)
+			if errors.Is(err, pay.ErrSubscriptionNotFound) {
+				err = nil
+			}
+
 			if err != nil {
 				return err
 			}
 
-			subs = append(subs, *sub)
+			if sub != nil {
+				subs = append(subs, *sub)
+			}
 		}
 
-		return templates.SubscriptionsIndex(subs).Render(r.Context(), w)
+		return templates.SubscriptionsIndex(subs, username).Render(r.Context(), w)
 	})
 }
 

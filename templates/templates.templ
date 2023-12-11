@@ -10,7 +10,7 @@ templ SubscriptionUsers(subID int64, usernames []string) {
 	@layout("Subscription Users") {
 		<h1>Users</h1>
 		<form method="post" action={ templ.URL(fmt.Sprintf("/subscriptions/users/new?s=%d", subID)) }>
-			<input type="text" name="username" id="username" placeholder="Username"/>
+			<input type="text" name="username" id="username" placeholder="Username" />
 			<input type="submit" value="Add User"/>
 		</form>
 		<table>
@@ -30,7 +30,6 @@ templ SubscriptionUsers(subID int64, usernames []string) {
 			</tbody>
 		</table>
 	}
-
 }
 
 templ PlansNew() {
@@ -202,19 +201,9 @@ templ PricesNew(monthly, annual string, plans []pay.Plan) {
 
 templ Home() {
 	@layout("Pay") {
-		<h1>Pay</h1>
+		<h1>Cent</h1>
+		<hr/>
 		<a href="https://github.com/cristosal/pay">Github</a>
-		<nav>
-			<ol>
-				<li><a href="/plans">Plans</a></li>
-				<li><a href="/prices">Prices</a></li>
-				<li><a href="/customers">Customers</a></li>
-				<li><a href="/subscriptions">Subscriptions</a></li>
-				<li><a href="/events">Webhook Events</a></li>
-				<li><a href="/checkout">Checkout</a></li>
-				<li><a role="button" href="/sync">Sync</a></li>
-			</ol>
-		</nav>
 	}
 }
 
@@ -237,13 +226,14 @@ templ WebhookIndex(events []pay.WebhookEvent) {
 				}
 			</tbody>
 		</table>
-	} }
+	}
+}
 
-templ SubscriptionsIndex(subscriptions []pay.Subscription) {
+templ SubscriptionsIndex(subscriptions []pay.Subscription, username string) {
 	@layout("Subscriptions") {
 		<h1>Subscriptions</h1>
-		<form method="get" action="/subscriptions"> 
-			<input type="search" name="username" placeholder="Search by username" id="username" />
+		<form method="get" action="/subscriptions">
+			<input type="search" name="username" placeholder="Search by Username..." id="username" value={ templ.EscapeString(username) }/>
 			<input type="submit" value="Search"/>
 		</form>
 		<table>
@@ -279,11 +269,32 @@ templ layout(title string) {
 		<head>
 			<title>{ title }</title>
 			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css"/>
+			<style>
+				:root { 
+					--primary: #fdd835; 
+				}
+			</style>
 		</head>
 		<body>
-			<main class="container">
-				{ children... }
-			</main>
+			<nav class="container">
+				<ol>
+					<li>
+						<a href="/"><strong>Cent</strong></a>
+					</li>
+				</ol>
+				<ol>
+					<li><a href="/plans">Plans</a></li>
+					<li><a href="/prices">Prices</a></li>
+					<li><a href="/customers">Customers</a></li>
+					<li><a href="/subscriptions">Subscriptions</a></li>
+					<li><a href="/events">Webhook Events</a></li>
+					<li><a href="/checkout">Checkout</a></li>
+					<li>
+						<a role="button" class="outline" href="/sync">Sync</a>
+					</li>
+				</ol>
+			</nav>
+			<main class="container">{ children... }</main>
 		</body>
 	</html>
 }
