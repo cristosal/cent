@@ -2,21 +2,25 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/cristosal/micropay/templates"
+	"github.com/cristosal/orm"
 
 	"github.com/cristosal/pay"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 const (
-	addr = "127.0.0.1:8080"
+	addr                = "127.0.0.1:8080"
+	subscriptionQueryID = "s"
 )
 
 var (
@@ -62,10 +66,98 @@ func main() {
 	http.HandleFunc("/customers", handleCustomers(p))
 	http.HandleFunc("/customers/new", handleCustomersNew(p))
 	http.HandleFunc("/subscriptions", handleSubscriptions(p))
+	http.HandleFunc("/subscriptions/users", handleSubscriptionsUsers(p))
+	http.HandleFunc("/subscriptions/users/new", handleSubscriptionsUsersNew(p))
+	http.HandleFunc("/subscriptions/users/delete", handleSubscriptionsUsersDelete(p))
 	http.HandleFunc("/events", handleWebhookEvents(p))
 	http.HandleFunc("/checkout", handleCheckout(p))
 	http.HandleFunc("/checkout/success", handleCheckoutSuccess())
 	http.ListenAndServe(addr, nil)
+}
+
+func handleSubscriptionsUsersDelete(p *pay.StripeProvider) http.HandlerFunc {
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
+		var (
+			q        = r.URL.Query()
+			username = q.Get("username")
+			s        = q.Get("s")
+		)
+
+		subID, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return err
+		}
+
+		if err := p.RemoveSubscriptionUser(&pay.SubscriptionUser{
+			SubscriptionID: subID,
+			Username:       username,
+		}); err != nil {
+			return err
+		}
+
+		redirect := fmt.Sprintf("/subscriptions/users?s=%s", s)
+
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
+		return nil
+	})
+}
+
+func handleSubscriptionsUsersNew(p *pay.StripeProvider) http.HandlerFunc {
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
+		switch r.Method {
+		case http.MethodPost:
+			if err := r.ParseForm(); err != nil {
+				return err
+			}
+
+			username := strings.Trim(r.FormValue("username"), " ")
+			subIDString := r.URL.Query().Get("s")
+
+			subID, err := strconv.ParseInt(subIDString, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			if err := p.AddSubscriptionUser(&pay.SubscriptionUser{
+				SubscriptionID: subID,
+				Username:       username,
+			}); err != nil {
+				return err
+			}
+
+			http.Redirect(w, r, fmt.Sprintf("/subscriptions/users?s=%d", subID), http.StatusSeeOther)
+			return nil
+		}
+
+		return errors.New("method not supported")
+	})
+}
+
+func handleSubscriptionsUsers(p *pay.StripeProvider) http.HandlerFunc {
+	return wrap(func(w http.ResponseWriter, r *http.Request) error {
+		subIDString := r.URL.Query().Get("s")
+		if subIDString == "" {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return nil
+		}
+
+		subID, err := strconv.ParseInt(subIDString, 10, 64)
+		if err != nil {
+			return err
+		}
+
+		usernames, err := p.ListUsernames(subID)
+		if errors.Is(err, orm.ErrNotFound) {
+			usernames = []string{}
+			err = nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		return templates.SubscriptionUsers(subID, usernames).Render(r.Context(), w)
+	})
 }
 
 func handleCheckoutSuccess() http.HandlerFunc {
@@ -122,9 +214,24 @@ func handleCheckout(p *pay.StripeProvider) http.HandlerFunc {
 
 func handleSubscriptions(p *pay.StripeProvider) http.HandlerFunc {
 	return wrap(func(w http.ResponseWriter, r *http.Request) error {
-		subs, err := p.ListAllSubscriptions()
-		if err != nil {
-			return err
+		username := r.URL.Query().Get("username")
+		var (
+			subs []pay.Subscription
+			err  error
+		)
+
+		if username == "" {
+			subs, err = p.ListAllSubscriptions()
+			if err != nil {
+				return err
+			}
+		} else {
+			sub, err := p.GetSubscriptionByUsername(username)
+			if err != nil {
+				return err
+			}
+
+			subs = append(subs, *sub)
 		}
 
 		return templates.SubscriptionsIndex(subs).Render(r.Context(), w)

@@ -6,6 +6,33 @@ import (
 	"github.com/cristosal/pay"
 )
 
+templ SubscriptionUsers(subID int64, usernames []string) {
+	@layout("Subscription Users") {
+		<h1>Users</h1>
+		<form method="post" action={ templ.URL(fmt.Sprintf("/subscriptions/users/new?s=%d", subID)) }>
+			<input type="text" name="username" id="username" placeholder="Username"/>
+			<input type="submit" value="Add User"/>
+		</form>
+		<table>
+			<thead>
+				<th>Username</th>
+				<th>Actions</th>
+			</thead>
+			<tbody>
+				for _, username := range usernames {
+					<tr>
+						<td>{ username }</td>
+						<td>
+							<a href={ templ.URL(fmt.Sprintf("/subscriptions/users/delete?s=%d&username=%s", subID, username)) }>Del</a>
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+
+}
+
 templ PlansNew() {
 	@layout("New Plan") {
 		<form method="POST" action="/plans">
@@ -52,7 +79,7 @@ templ PlansIndex(plans []pay.Plan) {
 						<td>{ p.Description }</td>
 						<td>{ p.Provider }</td>
 						<td>{ p.ProviderID }</td>
-						<td><a href="/plans/delete?id={ fmt.Sprint(p.ID) }">Del</a></td>
+						<td><a href={ templ.URL(fmt.Sprintf("/plans/delete?id=%d", p.ID)) }>Del</a></td>
 					</tr>
 				}
 			</tbody>
@@ -176,6 +203,7 @@ templ PricesNew(monthly, annual string, plans []pay.Plan) {
 templ Home() {
 	@layout("Pay") {
 		<h1>Pay</h1>
+		<a href="https://github.com/cristosal/pay">Github</a>
 		<nav>
 			<ol>
 				<li><a href="/plans">Plans</a></li>
@@ -209,12 +237,15 @@ templ WebhookIndex(events []pay.WebhookEvent) {
 				}
 			</tbody>
 		</table>
-	}
-}
+	} }
 
 templ SubscriptionsIndex(subscriptions []pay.Subscription) {
 	@layout("Subscriptions") {
 		<h1>Subscriptions</h1>
+		<form method="get" action="/subscriptions"> 
+			<input type="search" name="username" placeholder="Search by username" id="username" />
+			<input type="submit" value="Search"/>
+		</form>
 		<table>
 			<thead>
 				<th>ID</th>
@@ -222,6 +253,7 @@ templ SubscriptionsIndex(subscriptions []pay.Subscription) {
 				<th>CustomerID</th>
 				<th>PriceID</th>
 				<th>Active</th>
+				<th>Actions</th>
 			</thead>
 			<tbody>
 				for _, s := range subscriptions {
@@ -231,6 +263,9 @@ templ SubscriptionsIndex(subscriptions []pay.Subscription) {
 						<td>{ fmt.Sprint(s.CustomerID) }</td>
 						<td>{ fmt.Sprint(s.PriceID) }</td>
 						<td>{ fmt.Sprint(s.Active) }</td>
+						<td>
+							<a href={ templ.URL(fmt.Sprintf("/subscriptions/users?s=%d", s.ID)) }>Users</a>
+						</td>
 					</tr>
 				}
 			</tbody>
@@ -261,7 +296,7 @@ templ CheckoutForm(customers []pay.Customer, prices []pay.Price) {
 				<label for="customer_id">Customer</label>
 				<select name="customer_id" id="customer_id">
 					for _, c := range customers {
-						<option value="{ c.ID }">{ c.Name }</option>
+						<option value={ fmt.Sprint(c.ID) }>{ c.Name }</option>
 					}
 				</select>
 			</div>
@@ -269,7 +304,7 @@ templ CheckoutForm(customers []pay.Customer, prices []pay.Price) {
 				<label for="price_id">Price</label>
 				<select name="price_id" id="price_id">
 					for _, p := range prices {
-						<option value="{ p.ID }">
+						<option value={ fmt.Sprint(p.ID) }>
 							{ fmt.Sprint(p.PlanID) } - { p.Currency } ${ fmt.Sprint(p.Amount) }/{ p.Schedule }
 						</option>
 					}
