@@ -1,4 +1,4 @@
-module github.com/cristosal/micropay
+module github.com/cristosal/cent
 
 require (
 	github.com/a-h/templ v0.2.476

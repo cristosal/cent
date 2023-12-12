@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cristosal/micropay/templates"
+	"github.com/cristosal/cent/templates"
 	"github.com/cristosal/orm"
 
 	"github.com/cristosal/pay"
