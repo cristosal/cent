@@ -229,17 +229,13 @@ func handleSubscriptions(p *pay.StripeProvider) http.HandlerFunc {
 				return err
 			}
 		} else {
-			sub, err := p.GetSubscriptionByUsername(username)
+			subs, err = p.GetSubscriptionsByUsername(username)
 			if errors.Is(err, pay.ErrSubscriptionNotFound) {
 				err = nil
 			}
 
 			if err != nil {
 				return err
-			}
-
-			if sub != nil {
-				subs = append(subs, *sub)
 			}
 		}
 
