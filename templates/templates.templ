@@ -10,7 +10,7 @@ templ SubscriptionUsers(subID int64, usernames []string) {
 	@layout("Subscription Users") {
 		<h1>Users</h1>
 		<form method="post" action={ templ.URL(fmt.Sprintf("/subscriptions/users/new?s=%d", subID)) }>
-			<input type="text" name="username" id="username" placeholder="Username" />
+			<input type="text" name="username" id="username" placeholder="Username"/>
 			<input type="submit" value="Add User"/>
 		</form>
 		<table>
@@ -243,6 +243,7 @@ templ SubscriptionsIndex(subscriptions []pay.Subscription, username string) {
 				<th>CustomerID</th>
 				<th>PriceID</th>
 				<th>Active</th>
+				<th>SubscribedAt</th>
 				<th>Actions</th>
 			</thead>
 			<tbody>
@@ -253,6 +254,7 @@ templ SubscriptionsIndex(subscriptions []pay.Subscription, username string) {
 						<td>{ fmt.Sprint(s.CustomerID) }</td>
 						<td>{ fmt.Sprint(s.PriceID) }</td>
 						<td>{ fmt.Sprint(s.Active) }</td>
+						<td>{ fmt.Sprint(s.CreatedAt.String()) }</td>
 						<td>
 							<a href={ templ.URL(fmt.Sprintf("/subscriptions/users?s=%d", s.ID)) }>Users</a>
 						</td>
@@ -294,7 +296,9 @@ templ layout(title string) {
 					</li>
 				</ol>
 			</nav>
-			<main class="container">{ children... }</main>
+			<main class="container">
+				{ children... }
+			</main>
 		</body>
 	</html>
 }
