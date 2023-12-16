@@ -94,6 +94,7 @@ func (s *natsServer) handleAddCustomer() natsHandler {
 		if err := json.Unmarshal(msg.Data, &c); err != nil {
 			return err
 		}
+
 		if err := s.provider.AddCustomer(&c); err != nil {
 			return err
 		}
