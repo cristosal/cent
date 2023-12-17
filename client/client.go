@@ -103,13 +103,8 @@ func (c *Client) AddPlan(p *pay.Plan) error {
 	return err
 }
 
-func (c *Client) RemovePlan(p *pay.Plan) error {
-	data, err := json.Marshal(p)
-	if err != nil {
-		return err
-	}
-
-	_, err = c.request("cent.plan.remove", data)
+func (c *Client) RemovePlanByProviderID(providerID string) error {
+	_, err := c.request("cent.plan.remove.provider_id", []byte(providerID))
 	return err
 }
 

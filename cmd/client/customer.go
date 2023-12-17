@@ -37,11 +37,7 @@ var (
 			if err != nil {
 				return err
 			}
-
-			for _, cust := range customers {
-				fmt.Printf("%+v\n", cust)
-			}
-			return nil
+			return pprint(customers)
 		},
 	}
 
@@ -85,8 +81,7 @@ var (
 				return err
 			}
 
-			fmt.Printf("%+v", cust)
-			return nil
+			return pprint(cust)
 		},
 	}
 

@@ -253,13 +253,9 @@ func (s *natsServer) handleListPlans() natsHandler {
 	}
 }
 
-func (s *natsServer) handleRemovePlan() natsHandler {
+func (s *natsServer) handleRemovePlanByProviderID() natsHandler {
 	return func(msg *nats.Msg) error {
-		var pl pay.Plan
-		if err := json.Unmarshal(msg.Data, &pl); err != nil {
-			return err
-		}
-		if err := s.provider.RemovePlan(&pl); err != nil {
+		if err := s.provider.RemovePlanByProviderID(string(msg.Data)); err != nil {
 			return err
 		}
 

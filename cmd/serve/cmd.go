@@ -95,7 +95,7 @@ var Cmd = &cobra.Command{
 			"cent.plan.get.provider_id":         srv.handleGetPlanByProvider(),
 			"cent.plan.list":                    srv.handleListPlans(),
 			"cent.plan.list.username":           srv.handleGetPlansByUsername(),
-			"cent.plan.remove":                  srv.handleRemovePlan(),
+			"cent.plan.remove":                  srv.handleRemovePlanByProviderID(),
 			"cent.price.add":                    srv.handleAddPrice(),
 			"cent.price.list":                   srv.handleListPrices(),
 			"cent.price.list.plan_id":           srv.handleListPricesByPlanID(),

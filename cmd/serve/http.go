@@ -303,7 +303,7 @@ func handlePlansDelete(p *pay.StripeProvider) http.HandlerFunc {
 			return err
 		}
 
-		if err := p.RemovePlan(pl); err != nil {
+		if err := p.RemovePlanByProviderID(pl.ProviderID); err != nil {
 			return err
 		}
 
