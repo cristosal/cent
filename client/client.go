@@ -88,9 +88,8 @@ func (c *Client) ListCustomers() ([]pay.Customer, error) {
 	return customers, nil
 }
 
-func (c *Client) RemoveCustomer(id int64) error {
-	str := strconv.FormatInt(id, 10)
-	_, err := c.request("cent.customer.remove", []byte(str))
+func (c *Client) RemoveCustomerByProviderID(providerID string) error {
+	_, err := c.request("cent.customer.remove.provider_id", []byte(providerID))
 	return err
 }
 
