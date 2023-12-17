@@ -24,7 +24,7 @@ var (
 		SilenceUsage: true,
 	}
 
-	ListCustomersCmd = &cobra.Command{
+	listCustomersCmd = &cobra.Command{
 		Use:   "list",
 		Short: "lists all customers",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -41,7 +41,7 @@ var (
 		},
 	}
 
-	AddCustomerCmd = &cobra.Command{
+	addCustomerCmd = &cobra.Command{
 		Use:   "add",
 		Short: "adds a customer directly to the provider",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -54,7 +54,7 @@ var (
 		},
 	}
 
-	GetCustomerCmd = &cobra.Command{
+	getCustomerCmd = &cobra.Command{
 		Use:     "get",
 		Aliases: []string{"g"},
 		Short:   "get customer by property",
@@ -85,7 +85,7 @@ var (
 		},
 	}
 
-	RemoveCustomerCmd = &cobra.Command{
+	removeCustomerCmd = &cobra.Command{
 		Use:     "remove provider_id",
 		Aliases: []string{"rm"},
 		Short:   "removes a customer from the provider",
@@ -111,12 +111,12 @@ var (
 )
 
 func init() {
-	addCustomerFlags(AddCustomerCmd)
-	getCustomerFlags(GetCustomerCmd)
+	addCustomerFlags(addCustomerCmd)
+	getCustomerFlags(getCustomerCmd)
 
 	CustomersCmd.PersistentFlags().DurationVar(&clientTimeout, "timeout", time.Second*10, "timeout for request")
 	CustomersCmd.PersistentFlags().StringVar(&natsURL, "nats", nats.DefaultURL, "nats connection url")
-	CustomersCmd.AddCommand(AddCustomerCmd, ListCustomersCmd, RemoveCustomerCmd, GetCustomerCmd)
+	CustomersCmd.AddCommand(addCustomerCmd, listCustomersCmd, removeCustomerCmd, getCustomerCmd)
 }
 
 func getCustomerFlags(cmd *cobra.Command) {
