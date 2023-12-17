@@ -12,7 +12,7 @@ var (
 
 	PricesCmd = &cobra.Command{
 		Use:   "prices",
-		Short: "manage prices",
+		Short: "Manage prices",
 	}
 
 	addPriceCmd = &cobra.Command{
@@ -86,9 +86,13 @@ func init() {
 	addPriceCmd.Flags().Int64Var(&pr.PlanID, "plan-id", 0, "plan to which this price belongs")
 	addPriceCmd.Flags().IntVar(&pr.TrialDays, "trial-days", 0, "amount of trial days for plan")
 	addPriceCmd.MarkFlagRequired("plan-id")
+
 	listPricesCmd.Flags().Int64Var(&pr.PlanID, "plan-id", 0, "list prices for plan")
+
 	getPriceCmd.Flags().Int64Var(&pr.ID, "id", 0, "price id")
 	getPriceCmd.Flags().StringVar(&pr.ProviderID, "provider-id", "", "price provider id")
+	getPriceCmd.MarkFlagsMutuallyExclusive("id", "provider-id")
+	getPriceCmd.MarkFlagsOneRequired("id", "provider-id")
 
 	PricesCmd.AddCommand(addPriceCmd, listPricesCmd, getPriceCmd)
 }

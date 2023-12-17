@@ -20,7 +20,7 @@ var (
 var (
 	CustomersCmd = &cobra.Command{
 		Use:          "customers",
-		Short:        "manage customers",
+		Short:        "Manage customers",
 		SilenceUsage: true,
 	}
 
@@ -114,7 +114,6 @@ var (
 func init() {
 	addCustomerFlags(addCustomerCmd)
 	getCustomerFlags(getCustomerCmd)
-
 	CustomersCmd.PersistentFlags().DurationVar(&clientTimeout, "timeout", time.Second*10, "timeout for request")
 	CustomersCmd.PersistentFlags().StringVar(&natsURL, "nats", nats.DefaultURL, "nats connection url")
 	CustomersCmd.AddCommand(addCustomerCmd, listCustomersCmd, removeCustomerCmd, getCustomerCmd)
@@ -124,6 +123,8 @@ func getCustomerFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().Int64Var(&c.ID, "id", 0, "customer id")
 	cmd.PersistentFlags().StringVarP(&c.Email, "email", "", "", "customer email")
 	cmd.PersistentFlags().StringVarP(&c.ProviderID, "provider-id", "", "", "customer provider id")
+	cmd.MarkFlagsOneRequired("id", "email", "provider-id")
+	cmd.MarkFlagsMutuallyExclusive("id", "email", "provider-id")
 }
 
 func addCustomerFlags(cmd *cobra.Command) {

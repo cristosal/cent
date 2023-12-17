@@ -15,7 +15,7 @@ var (
 	SubscriptionsCmd = &cobra.Command{
 		Use:     "subscriptions",
 		Aliases: []string{"subs"},
-		Short:   "manage subscriptions",
+		Short:   "Manage subscriptions",
 	}
 
 	listSubscriptionsCmd = &cobra.Command{
@@ -78,8 +78,12 @@ var (
 func init() {
 	listSubscriptionsCmd.Flags().Int64Var(&planID, "plan-id", 0, "list subscriptions by plan id")
 	listSubscriptionsCmd.Flags().StringVar(&username, "username", "", "list subscriptions by username")
+	listSubscriptionsCmd.MarkFlagsMutuallyExclusive("plan-id", "username")
+
 	getSubscriptionCmd.Flags().Int64Var(&sub.CustomerID, "customer-id", 0, "get subscription by customer id")
 	getSubscriptionCmd.Flags().StringVar(&sub.ProviderID, "provider-id", "", "get subscription by provider id")
-	// plans by subscription id and plans by username
+	getSubscriptionCmd.MarkFlagsOneRequired("customer-id", "provider-id")
+	getSubscriptionCmd.MarkFlagsMutuallyExclusive("customer-id", "provider-id")
+
 	SubscriptionsCmd.AddCommand(listSubscriptionsCmd, getSubscriptionCmd)
 }

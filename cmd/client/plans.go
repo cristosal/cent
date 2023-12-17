@@ -14,7 +14,7 @@ var (
 
 	PlansCmd = &cobra.Command{
 		Use:   "plans",
-		Short: "manage plans",
+		Short: "Manage plans",
 	}
 
 	addPlanCmd = &cobra.Command{
@@ -55,7 +55,7 @@ var (
 		},
 	}
 
-	listPlans = &cobra.Command{
+	listPlansCmd = &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "list plans",
@@ -65,7 +65,14 @@ var (
 				return err
 			}
 
-			plans, err := cl.ListPlans()
+			var plans []pay.Plan
+
+			if username != "" {
+				plans, err = cl.ListPlansByUsername(username)
+			} else {
+				plans, err = cl.ListPlans()
+			}
+
 			if err != nil {
 				return err
 			}
@@ -91,6 +98,8 @@ var (
 
 			if pl.ID != 0 {
 				plan, err = cl.GetPlanByID(pl.ID)
+			} else if sub.ID != 0 {
+				plan, err = cl.GetPlanBySubscriptionID(sub.ID)
 			} else if pl.ProviderID != "" {
 				plan, err = cl.GetPlanByProviderID(pl.ProviderID)
 			} else if pl.Name != "" {
@@ -113,10 +122,16 @@ func init() {
 	addPlanCmd.Flags().StringVar(&pl.Description, "desc", "", "plan description")
 	addPlanCmd.Flags().StringVar(&pl.Provider, "provider", pay.ProviderStripe, "plan provider")
 	addPlanCmd.MarkFlagRequired("name")
-	getPlanCmd.Flags().Int64Var(&pl.ID, "id", 0, "plan id")
-	getPlanCmd.Flags().StringVar(&pl.Name, "name", "", "plan name")
-	getPlanCmd.Flags().StringVar(&pl.ProviderID, "provider-id", "", "plan provider id")
-	PlansCmd.AddCommand(addPlanCmd, removePlanCmd, listPlans, getPlanCmd)
+	listPlansCmd.Flags().StringVar(&username, "username", "", "list plans by username")
+
+	getPlanCmd.Flags().Int64Var(&pl.ID, "id", 0, "get plan by id")
+	getPlanCmd.Flags().Int64Var(&sub.ID, "subscription-id", 0, "get plan by subscription id")
+	getPlanCmd.Flags().StringVar(&pl.Name, "name", "", "get plan by name")
+	getPlanCmd.Flags().StringVar(&pl.ProviderID, "provider-id", "", "get plan by provider id")
+	getPlanCmd.MarkFlagsMutuallyExclusive("id", "subscription-id", "name", "provider-id")
+	getPlanCmd.MarkFlagsOneRequired("id", "subscription-id", "name", "provider-id")
+
+	PlansCmd.AddCommand(addPlanCmd, removePlanCmd, listPlansCmd, getPlanCmd)
 }
 
 func pprint(v any) error {
