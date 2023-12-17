@@ -21,20 +21,47 @@ var (
 	stripeWebhookSecret string
 )
 
+func getConnectionString() string {
+	if pgConnectionString == "" {
+		return os.Getenv("CONNECTION_STRING")
+	}
+	return pgConnectionString
+}
+
+func getStripeWebhookSecret() string {
+	if stripeWebhookSecret == "" {
+		return os.Getenv("STRIPE_WEBHOOK_SECRET")
+	}
+
+	return stripeWebhookSecret
+}
+
+func getStripeApiKey() string {
+	if stripeApiKey == "" {
+		return os.Getenv("STRIPE_API_KEY")
+	}
+
+	return stripeApiKey
+}
+
 var Cmd = &cobra.Command{
 	Use:   "serve",
 	Short: "serves cent microservice",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		db, err := sql.Open("pgx", pgConnectionString)
+		db, err := sql.Open("pgx", getConnectionString())
 		if err != nil {
 			return fmt.Errorf("error opening database: %w", err)
 		}
 
 		p := pay.NewStripeProvider(&pay.StripeConfig{
 			Repo:          pay.NewEntityRepo(db),
-			Key:           stripeApiKey,
-			WebhookSecret: stripeWebhookSecret,
+			Key:           getStripeApiKey(),
+			WebhookSecret: getStripeWebhookSecret(),
 		})
+
+		if err := p.Init(); err != nil {
+			return fmt.Errorf("error initializing pay: %w", err)
+		}
 
 		log.Println("syncing...")
 		if err := p.Sync(); err != nil {
@@ -60,7 +87,7 @@ var Cmd = &cobra.Command{
 			"cent.customer.get.id":              srv.handleGetCustomerByID(),
 			"cent.customer.get.provider_id":     srv.handleGetCustomerByProvider(),
 			"cent.customer.list":                srv.handleListCustomers(),
-			"cent.customer.remove":              srv.handleRemoveCustomer(),
+			"cent.customer.remove.provider_id":  srv.handleRemoveCustomerByProviderID(),
 			"cent.plan.add":                     srv.handleAddPlan(),
 			"cent.plan.get.id":                  srv.handleGetPlanByID(),
 			"cent.plan.get.subscription_id":     srv.handleGetPlanBySubscriptionID(),
