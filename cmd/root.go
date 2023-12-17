@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/cristosal/cent/cmd/client"
 	"github.com/cristosal/cent/cmd/serve"
 	"github.com/spf13/cobra"
 )
@@ -11,5 +12,5 @@ var Root = &cobra.Command{
 }
 
 func init() {
-	Root.AddCommand(serve.Cmd)
+	Root.AddCommand(serve.Cmd, client.CustomersCmd)
 }
