@@ -25,8 +25,9 @@ var (
 	}
 
 	listCustomersCmd = &cobra.Command{
-		Use:   "list",
-		Short: "lists all customers",
+		Use:     "list",
+		Short:   "lists all customers",
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nc, err := nats.Connect(natsURL)
 			if err != nil {

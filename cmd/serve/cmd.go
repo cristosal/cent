@@ -63,14 +63,12 @@ var Cmd = &cobra.Command{
 			return fmt.Errorf("error initializing pay: %w", err)
 		}
 
-		log.Println("syncing...")
+		fmt.Println("syncing...")
 		if err := p.Sync(); err != nil {
 			log.Fatal(fmt.Errorf("sync error: %w", err))
 		}
-		log.Println("done")
 
 		handleFuncs(p)
-
 		srv, err := newNatsServer(&natsServerConfig{
 			NatsURL:  natsURL,
 			Queue:    "cent",
@@ -125,8 +123,7 @@ var Cmd = &cobra.Command{
 
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, os.Interrupt)
-		fmt.Println("listening...")
-
+		fmt.Printf("listening on %s...", addr)
 		http.ListenAndServe(addr, nil)
 
 		<-ch
@@ -143,5 +140,5 @@ func init() {
 	Cmd.PersistentFlags().StringVarP(&natsURL, "pg", "", "", "Postgres connection string")
 	Cmd.PersistentFlags().StringVarP(&stripeApiKey, "stripe-api-key", "", "", "Stripe api key from stripe account")
 	Cmd.PersistentFlags().StringVarP(&stripeWebhookSecret, "stripe-webhook-secret", "", "", "Stripe webhook secret for verifying webhook post requests")
-	Cmd.PersistentFlags().StringVarP(&addr, "addr", "", "127:8080", "HTTP server address")
+	Cmd.PersistentFlags().StringVarP(&addr, "addr", "", "127.0.0.1:8080", "HTTP server address")
 }
