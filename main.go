@@ -1,11 +1,13 @@
 package main
 
 import (
-	"log"
+	"os"
 
 	"github.com/cristosal/cent/cmd"
 )
 
 func main() {
-	log.Fatal(cmd.Root.Execute())
+	if err := cmd.Root.Execute(); err != nil {
+		os.Exit(1)
+	}
 }
