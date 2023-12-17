@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
 
 	"github.com/cristosal/pay"
 	"github.com/nats-io/nats.go"
@@ -74,42 +73,48 @@ var Cmd = &cobra.Command{
 			Queue:    "cent",
 			Provider: p,
 		})
-
 		if err != nil {
 			return fmt.Errorf("error initializing nats server: %w", err)
 		}
 
 		submap := map[string]natsHandler{
-			"cent.customer.add":                 srv.handleAddCustomer(),
-			"cent.customer.get.email":           srv.handleGetCustomerByEmail(),
-			"cent.customer.get.id":              srv.handleGetCustomerByID(),
-			"cent.customer.get.provider_id":     srv.handleGetCustomerByProvider(),
-			"cent.customer.list":                srv.handleListCustomers(),
-			"cent.customer.remove.provider_id":  srv.handleRemoveCustomerByProviderID(),
-			"cent.plan.add":                     srv.handleAddPlan(),
-			"cent.plan.get.id":                  srv.handleGetPlanByID(),
-			"cent.plan.get.subscription_id":     srv.handleGetPlanBySubscriptionID(),
-			"cent.plan.get.name":                srv.handleGetPlanByName(),
-			"cent.plan.get.provider_id":         srv.handleGetPlanByProvider(),
-			"cent.plan.list":                    srv.handleListPlans(),
-			"cent.plan.list.username":           srv.handleGetPlansByUsername(),
-			"cent.plan.remove":                  srv.handleRemovePlanByProviderID(),
-			"cent.price.add":                    srv.handleAddPrice(),
-			"cent.price.list":                   srv.handleListPrices(),
-			"cent.price.list.plan_id":           srv.handleListPricesByPlanID(),
-			"cent.price.get.id":                 srv.handleGetPriceByID(),
-			"cent.price.get.provider_id":        srv.handleGetPriceByProviderID(),
+			// customer
+			"cent.customer.add":                srv.handleAddCustomer(),
+			"cent.customer.get.id":             srv.handleGetCustomerByID(),
+			"cent.customer.get.email":          srv.handleGetCustomerByEmail(),
+			"cent.customer.get.provider_id":    srv.handleGetCustomerByProvider(),
+			"cent.customer.list":               srv.handleListCustomers(),
+			"cent.customer.remove.provider_id": srv.handleRemoveCustomerByProviderID(),
+			// plan
+			"cent.plan.add":                 srv.handleAddPlan(),
+			"cent.plan.get.id":              srv.handleGetPlanByID(),
+			"cent.plan.get.subscription_id": srv.handleGetPlanBySubscriptionID(),
+			"cent.plan.get.name":            srv.handleGetPlanByName(),
+			"cent.plan.get.provider_id":     srv.handleGetPlanByProviderID(),
+			"cent.plan.list":                srv.handleListPlans(),
+			"cent.plan.list.active":         srv.handleListActivePlans(),
+			"cent.plan.list.username":       srv.handleGetPlansByUsername(),
+			"cent.plan.remove.provider_id":  srv.handleRemovePlanByProviderID(),
+			// price
+			"cent.price.add":             srv.handleAddPrice(),
+			"cent.price.list":            srv.handleListPrices(),
+			"cent.price.list.plan_id":    srv.handleListPricesByPlanID(),
+			"cent.price.get.id":          srv.handleGetPriceByID(),
+			"cent.price.get.provider_id": srv.handleGetPriceByProviderID(),
+			// subscription
 			"cent.subscription.list":            srv.handleListSubscriptions(),
 			"cent.subscription.list.username":   srv.handleListSubscriptionsByUsername(),
 			"cent.subscription.list.plan_id":    srv.handleListSubscriptionsByPlanID(),
 			"cent.subscription.get.customer_id": srv.handleGetSubscriptionByCustomerID(),
 			"cent.subscription.get.provider_id": srv.handleGetSubscriptionByProviderID(),
-			"cent.subscription.user.add":        srv.handleAddSubscriptionUser(),
-			"cent.subscription.user.count":      srv.handleCountSubscriptionUsers(),
-			"cent.subscription.user.list":       srv.handleListSubscriptionUsers(),
-			"cent.subscription.user.remove":     srv.handleRemoveSubscriptionUser(),
-			"cent.sync":                         srv.handleSync(),
-			"cent.checkout":                     srv.handleCheckout(),
+			// user
+			"cent.subscription.user.add":    srv.handleAddSubscriptionUser(),
+			"cent.subscription.user.count":  srv.handleCountSubscriptionUsers(),
+			"cent.subscription.user.list":   srv.handleListSubscriptionUsers(),
+			"cent.subscription.user.remove": srv.handleRemoveSubscriptionUser(),
+			// other
+			"cent.sync":     srv.handleSync(),
+			"cent.checkout": srv.handleCheckout(),
 		}
 
 		var subs []*nats.Subscription
@@ -121,14 +126,11 @@ var Cmd = &cobra.Command{
 			subs = append(subs, sub)
 		}
 
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, os.Interrupt)
-		fmt.Printf("listening on %s...", addr)
-		http.ListenAndServe(addr, nil)
-
-		<-ch
-		for _, sub := range subs {
-			sub.Unsubscribe()
+		fmt.Printf("listening on %s...\n", addr)
+		if err := http.ListenAndServe(addr, nil); err != nil {
+			for _, sub := range subs {
+				sub.Unsubscribe()
+			}
 		}
 
 		return nil

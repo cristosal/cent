@@ -87,12 +87,12 @@ var (
 	}
 
 	removeCustomerCmd = &cobra.Command{
-		Use:     "remove provider_id",
+		Use:     "remove",
 		Aliases: []string{"rm"},
 		Short:   "removes a customer from the provider",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return errors.New("provider_id required")
+			if c.ProviderID == "" {
+				return errors.New("provider-id required")
 			}
 
 			client, err := getClient()
@@ -100,13 +100,7 @@ var (
 				return err
 			}
 
-			for _, id := range args {
-				if err := client.RemoveCustomerByProviderID(id); err != nil {
-					return fmt.Errorf("error removing customer %s: %w", id, err)
-				}
-			}
-
-			return nil
+			return client.RemoveCustomerByProviderID(c.ProviderID)
 		},
 	}
 )
@@ -114,6 +108,10 @@ var (
 func init() {
 	addCustomerFlags(addCustomerCmd)
 	getCustomerFlags(getCustomerCmd)
+
+	removeCustomerCmd.Flags().StringVar(&c.ProviderID, "provider-id", "", "remove by provider id")
+	removeCustomerCmd.MarkFlagRequired("provider-id")
+
 	CustomersCmd.PersistentFlags().DurationVar(&clientTimeout, "timeout", time.Second*10, "timeout for request")
 	CustomersCmd.PersistentFlags().StringVar(&natsURL, "nats", nats.DefaultURL, "nats connection url")
 	CustomersCmd.AddCommand(addCustomerCmd, listCustomersCmd, removeCustomerCmd, getCustomerCmd)
@@ -135,7 +133,6 @@ func addCustomerFlags(cmd *cobra.Command) {
 }
 
 func getClient() (*cl.Client, error) {
-
 	nc, err := nats.Connect(natsURL)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to nats: %w", err)

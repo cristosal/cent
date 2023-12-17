@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	pl pay.Plan
+	pl     pay.Plan
+	active bool
 
 	PlansCmd = &cobra.Command{
 		Use:   "plans",
@@ -35,7 +36,7 @@ var (
 		Short:   "remove plan by provider id",
 		Aliases: []string{"rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
+			if pl.ProviderID == "" {
 				return errors.New("provider id is required")
 			}
 
@@ -44,14 +45,7 @@ var (
 				return err
 			}
 
-			for _, id := range args {
-				if err := cl.RemovePlanByProviderID(id); err != nil {
-					return fmt.Errorf("error removing plan with id %s: %w", id, err)
-				}
-
-			}
-
-			return nil
+			return cl.RemovePlanByProviderID(pl.ProviderID)
 		},
 	}
 
@@ -67,7 +61,9 @@ var (
 
 			var plans []pay.Plan
 
-			if username != "" {
+			if pl.Active {
+				plans, err = cl.ListActivePlans()
+			} else if username != "" {
 				plans, err = cl.ListPlansByUsername(username)
 			} else {
 				plans, err = cl.ListPlans()
@@ -121,8 +117,15 @@ func init() {
 	addPlanCmd.Flags().StringVar(&pl.Name, "name", "", "plan name")
 	addPlanCmd.Flags().StringVar(&pl.Description, "desc", "", "plan description")
 	addPlanCmd.Flags().StringVar(&pl.Provider, "provider", pay.ProviderStripe, "plan provider")
+	addPlanCmd.Flags().BoolVar(&pl.Active, "active", true, "plan is active")
 	addPlanCmd.MarkFlagRequired("name")
+
+	removePlanCmd.Flags().StringVar(&pl.ProviderID, "provider-id", "", "remove plan in provider")
+	removePlanCmd.MarkFlagRequired("provider-id")
+
 	listPlansCmd.Flags().StringVar(&username, "username", "", "list plans by username")
+	listPlansCmd.Flags().BoolVar(&pl.Active, "active", false, "list active plans")
+	listPlansCmd.MarkFlagsMutuallyExclusive("username", "active")
 
 	getPlanCmd.Flags().Int64Var(&pl.ID, "id", 0, "get plan by id")
 	getPlanCmd.Flags().Int64Var(&sub.ID, "subscription-id", 0, "get plan by subscription id")
