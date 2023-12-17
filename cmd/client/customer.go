@@ -99,12 +99,11 @@ var (
 				return errors.New("provider_id required")
 			}
 
-			nc, err := nats.Connect(natsURL)
+			client, err := getClient()
 			if err != nil {
-				return fmt.Errorf("error connecting to nats: %w", err)
+				return err
 			}
 
-			client := cl.NewClient(nc, clientTimeout)
 			for _, id := range args {
 				if err := client.RemoveCustomerByProviderID(id); err != nil {
 					return fmt.Errorf("error removing customer %s: %w", id, err)
@@ -136,4 +135,14 @@ func addCustomerFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&c.Email, "email", "", "", "customer email")
 	cmd.PersistentFlags().StringVarP(&c.ProviderID, "provider-id", "", "", "customer provider id")
 	cmd.PersistentFlags().StringVarP(&c.Provider, "provider", "", pay.ProviderStripe, "customer provider")
+}
+
+func getClient() (*cl.Client, error) {
+
+	nc, err := nats.Connect(natsURL)
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to nats: %w", err)
+	}
+	client := cl.NewClient(nc, clientTimeout)
+	return client, nil
 }

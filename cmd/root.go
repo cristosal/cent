@@ -12,5 +12,5 @@ var Root = &cobra.Command{
 }
 
 func init() {
-	Root.AddCommand(serve.Cmd, client.CustomersCmd)
+	Root.AddCommand(serve.Cmd, client.CustomersCmd, client.PlansCmd)
 }
