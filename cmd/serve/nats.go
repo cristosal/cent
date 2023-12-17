@@ -103,13 +103,9 @@ func (s *natsServer) handleAddCustomer() natsHandler {
 	}
 }
 
-func (s *natsServer) handleRemoveCustomer() natsHandler {
+func (s *natsServer) handleRemoveCustomerByProviderID() natsHandler {
 	return func(msg *nats.Msg) error {
-		var c pay.Customer
-		if err := json.Unmarshal(msg.Data, &c); err != nil {
-			return err
-		}
-		if err := s.provider.RemoveCustomer(&c); err != nil {
+		if err := s.provider.RemoveCustomerByProviderID(string(msg.Data)); err != nil {
 			return err
 		}
 
