@@ -170,6 +170,20 @@ func (c *Client) ListPlans() ([]pay.Plan, error) {
 	return plans, nil
 }
 
+func (c *Client) ListActivePlans() ([]pay.Plan, error) {
+	data, err := c.request("cent.plan.list.active", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var plans []pay.Plan
+	if err := json.Unmarshal(data, &plans); err != nil {
+		return nil, err
+	}
+
+	return plans, nil
+}
+
 func (c *Client) ListPlansByUsername(username string) ([]pay.Plan, error) {
 	data, err := c.request("cent.plan.list.username", []byte(username))
 	if err != nil {
@@ -255,7 +269,6 @@ func (c *Client) request(subj string, req []byte) ([]byte, error) {
 	var resp response
 	if err := json.Unmarshal(msg.Data, &resp); err != nil {
 		return nil, err
-
 	}
 
 	if !resp.Success {
@@ -302,9 +315,22 @@ func (c *Client) ListSubscriptionsByPlanID(planID int64) ([]pay.Subscription, er
 	return subs, nil
 }
 
-func (c *Client) GetSubscriptionsByCustomerID(customerID int64) (*pay.Subscription, error) {
+func (c *Client) ListSubscriptionsByCustomerID(customerID int64) ([]pay.Subscription, error) {
 	id := strconv.FormatInt(customerID, 10)
 	data, err := c.request("cent.subscription.get.customer_id", []byte(id))
+	if err != nil {
+		return nil, err
+	}
+	var subs []pay.Subscription
+	if err := json.Unmarshal(data, &subs); err != nil {
+		return nil, err
+	}
+	return subs, nil
+}
+
+func (c *Client) GetSubscriptionByID(id int64) (*pay.Subscription, error) {
+	str := strconv.FormatInt(id, 10)
+	data, err := c.request("cent.subscription.get.id", []byte(str))
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +341,7 @@ func (c *Client) GetSubscriptionsByCustomerID(customerID int64) (*pay.Subscripti
 	return &sub, nil
 }
 
-func (c *Client) GetSubscriptionsByProviderID(providerID string) (*pay.Subscription, error) {
+func (c *Client) GetSubscriptionByProviderID(providerID string) (*pay.Subscription, error) {
 	data, err := c.request("cent.subscription.get.provider_id", []byte(providerID))
 	if err != nil {
 		return nil, err
@@ -373,7 +399,6 @@ func (c *Client) CountSubscriptionUsers(subID int64) (int64, error) {
 func (c *Client) Sync() error {
 	_, err := c.request("cent.sync", nil)
 	return err
-
 }
 
 func (c *Client) Checkout(req *pay.CheckoutRequest) (string, error) {

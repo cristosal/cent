@@ -19,5 +19,7 @@ func init() {
 		client.PricesCmd,
 		client.SubscriptionsCmd,
 		client.SeatsCmd,
+		client.SyncCmd,
+		client.CheckoutCmd,
 	)
 }

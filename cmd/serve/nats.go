@@ -320,14 +320,25 @@ func (s *natsServer) handleListSubscriptionsByPlanID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetSubscriptionByCustomerID() natsHandler {
+func (s *natsServer) handleListSubscriptionsByCustomerID() natsHandler {
 	return func(msg *nats.Msg) error {
 		id, err := strconv.ParseInt(string(msg.Data), 10, 64)
 		if err != nil {
 			return ErrBadRequest
 		}
 
-		sub, err := s.provider.GetSubscriptionByCustomerID(id)
+		subs, err := s.provider.ListSubscriptionsByCustomerID(id)
+		if err != nil {
+			return err
+		}
+
+		return s.reply(msg, subs)
+	}
+}
+
+func (s *natsServer) handleGetSubscriptionByProviderID() natsHandler {
+	return func(msg *nats.Msg) error {
+		sub, err := s.provider.GetSubscriptionByProvider(pay.ProviderStripe, string(msg.Data))
 		if err != nil {
 			return err
 		}
@@ -336,9 +347,14 @@ func (s *natsServer) handleGetSubscriptionByCustomerID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetSubscriptionByProviderID() natsHandler {
+func (s *natsServer) handleGetSubscriptionByID() natsHandler {
 	return func(msg *nats.Msg) error {
-		sub, err := s.provider.GetSubscriptionByProvider(pay.ProviderStripe, string(msg.Data))
+		id, err := strconv.ParseInt(string(msg.Data), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		sub, err := s.provider.GetSubscriptionByID(id)
 		if err != nil {
 			return err
 		}

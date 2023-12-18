@@ -102,11 +102,12 @@ var Cmd = &cobra.Command{
 			"cent.price.get.id":          srv.handleGetPriceByID(),
 			"cent.price.get.provider_id": srv.handleGetPriceByProviderID(),
 			// subscription
-			"cent.subscription.list":            srv.handleListSubscriptions(),
-			"cent.subscription.list.username":   srv.handleListSubscriptionsByUsername(),
-			"cent.subscription.list.plan_id":    srv.handleListSubscriptionsByPlanID(),
-			"cent.subscription.get.customer_id": srv.handleGetSubscriptionByCustomerID(),
-			"cent.subscription.get.provider_id": srv.handleGetSubscriptionByProviderID(),
+			"cent.subscription.list":             srv.handleListSubscriptions(),
+			"cent.subscription.list.username":    srv.handleListSubscriptionsByUsername(),
+			"cent.subscription.list.plan_id":     srv.handleListSubscriptionsByPlanID(),
+			"cent.subscription.list.customer_id": srv.handleListSubscriptionsByCustomerID(),
+			"cent.subscription.get.id":           srv.handleGetSubscriptionByID(),
+			"cent.subscription.get.provider_id":  srv.handleGetSubscriptionByProviderID(),
 			// user
 			"cent.subscription.user.add":    srv.handleAddSubscriptionUser(),
 			"cent.subscription.user.count":  srv.handleCountSubscriptionUsers(),

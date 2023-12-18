@@ -30,7 +30,9 @@ var (
 			}
 
 			var subs []pay.Subscription
-			if username != "" {
+			if sub.CustomerID != 0 {
+				subs, err = cl.ListSubscriptionsByCustomerID(sub.CustomerID)
+			} else if username != "" {
 				subs, err = cl.ListSubscriptionsByUsername(username)
 			} else if planID != 0 {
 				subs, err = cl.ListSubscriptionsByPlanID(planID)
@@ -58,12 +60,12 @@ var (
 			}
 
 			var s *pay.Subscription
-			if sub.CustomerID != 0 {
-				s, err = cl.GetSubscriptionsByCustomerID(sub.CustomerID)
+			if sub.ID != 0 {
+				s, err = cl.GetSubscriptionByID(sub.ID)
 			} else if sub.ProviderID != "" {
-				s, err = cl.GetSubscriptionsByProviderID(sub.ProviderID)
+				s, err = cl.GetSubscriptionByProviderID(sub.ProviderID)
 			} else {
-				return errors.New("one of --customer-id or --provider-id is required")
+				return errors.New("one of --id or --provider-id is required")
 			}
 
 			if err != nil {
@@ -76,14 +78,15 @@ var (
 )
 
 func init() {
+	listSubscriptionsCmd.Flags().Int64Var(&sub.CustomerID, "customer-id", 0, "list subscriptions by customer id")
 	listSubscriptionsCmd.Flags().Int64Var(&planID, "plan-id", 0, "list subscriptions by plan id")
 	listSubscriptionsCmd.Flags().StringVar(&username, "username", "", "list subscriptions by username")
-	listSubscriptionsCmd.MarkFlagsMutuallyExclusive("plan-id", "username")
+	listSubscriptionsCmd.MarkFlagsMutuallyExclusive("plan-id", "username", "customer-id")
 
-	getSubscriptionCmd.Flags().Int64Var(&sub.CustomerID, "customer-id", 0, "get subscription by customer id")
+	getSubscriptionCmd.Flags().Int64Var(&sub.ID, "id", 0, "get subscription by id")
 	getSubscriptionCmd.Flags().StringVar(&sub.ProviderID, "provider-id", "", "get subscription by provider id")
-	getSubscriptionCmd.MarkFlagsOneRequired("customer-id", "provider-id")
-	getSubscriptionCmd.MarkFlagsMutuallyExclusive("customer-id", "provider-id")
+	getSubscriptionCmd.MarkFlagsOneRequired("id", "provider-id")
+	getSubscriptionCmd.MarkFlagsMutuallyExclusive("id", "provider-id")
 
 	SubscriptionsCmd.AddCommand(listSubscriptionsCmd, getSubscriptionCmd)
 }
