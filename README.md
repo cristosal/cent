@@ -6,7 +6,7 @@ payment micro-service using https://github.com/cristosal/pay
 - Local database copy of all customer, subscription, plan and price data
 - Sync and integration with Stripe via webhooks
 - Web portal for viewing and managing entities
-- [NATS](https://nats-.io) pub sub, and request reply integration
+- [NATS](https://nats.io) pub sub, and request reply integration
 - Entire API exposed via CLI make any request and view data directly from the terminal.
 
 ## Installation
