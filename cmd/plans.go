@@ -1,4 +1,4 @@
-package client
+package cmd
 
 import (
 	"encoding/json"
@@ -10,8 +10,7 @@ import (
 )
 
 var (
-	pl     pay.Plan
-	active bool
+	pl pay.Plan
 
 	PlansCmd = &cobra.Command{
 		Use:   "plans",
