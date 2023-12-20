@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/cristosal/cent/client"
+	cent "github.com/cristosal/cent/client"
 	"github.com/cristosal/pay"
 	"github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
@@ -79,38 +79,38 @@ var Cmd = &cobra.Command{
 		}
 
 		submap := map[string]natsHandler{
-			client.SubjCheckout:                     srv.handleCheckout(),
-			client.SubjCustomerAdd:                  srv.handleAddCustomer(),
-			client.SubjCustomerGetByEmail:           srv.handleGetCustomerByEmail(),
-			client.SubjCustomerGetByID:              srv.handleGetCustomerByID(),
-			client.SubjCustomerGetByProviderID:      srv.handleGetCustomerByProvider(),
-			client.SubjCustomerList:                 srv.handleListCustomers(),
-			client.SubjCustomerRemoveByProviderID:   srv.handleRemoveCustomerByProviderID(),
-			client.SubjPlanAdd:                      srv.handleAddPlan(),
-			client.SubjPlanGetByID:                  srv.handleGetPlanByID(),
-			client.SubjPlanGetByName:                srv.handleGetPlanByName(),
-			client.SubjPlanGetByProviderID:          srv.handleGetPlanByProviderID(),
-			client.SubjPlanGetBySubscriptionID:      srv.handleGetPlanBySubscriptionID(),
-			client.SubjPlanList:                     srv.handleListPlans(),
-			client.SubjPlanListActive:               srv.handleListActivePlans(),
-			client.SubjPlanListByUsername:           srv.handleGetPlansByUsername(),
-			client.SubjPlanRemoveByProviderID:       srv.handleRemovePlanByProviderID(),
-			client.SubjPriceAdd:                     srv.handleAddPrice(),
-			client.SubjPriceGetByID:                 srv.handleGetPriceByID(),
-			client.SubjPriceGetByProviderID:         srv.handleGetPriceByProviderID(),
-			client.SubjPriceList:                    srv.handleListPrices(),
-			client.SubjPriceListByPlanID:            srv.handleListPricesByPlanID(),
-			client.SubjSubscriptionGetByID:          srv.handleGetSubscriptionByID(),
-			client.SubjSubscriptionGetByProviderID:  srv.handleGetSubscriptionByProviderID(),
-			client.SubjSubscriptionList:             srv.handleListSubscriptions(),
-			client.SubjSubscriptionListByCustomerID: srv.handleListSubscriptionsByCustomerID(),
-			client.SubjSubscriptionListByPlanID:     srv.handleListSubscriptionsByPlanID(),
-			client.SubjSubscriptionListByUsername:   srv.handleListSubscriptionsByUsername(),
-			client.SubjSubscriptionUserAdd:          srv.handleAddSubscriptionUser(),
-			client.SubjSubscriptionUserCount:        srv.handleCountSubscriptionUsers(),
-			client.SubjSubscriptionUserList:         srv.handleListSubscriptionUsers(),
-			client.SubjSubscriptionUserRemove:       srv.handleRemoveSubscriptionUser(),
-			client.SubjSync:                         srv.handleSync(),
+			cent.SubjCheckout:                     srv.handleCheckout(),
+			cent.SubjCustomerAdd:                  srv.handleAddCustomer(),
+			cent.SubjCustomerGetByEmail:           srv.handleGetCustomerByEmail(),
+			cent.SubjCustomerGetByID:              srv.handleGetCustomerByID(),
+			cent.SubjCustomerGetByProviderID:      srv.handleGetCustomerByProvider(),
+			cent.SubjCustomerList:                 srv.handleListCustomers(),
+			cent.SubjCustomerRemoveByProviderID:   srv.handleRemoveCustomerByProviderID(),
+			cent.SubjPlanAdd:                      srv.handleAddPlan(),
+			cent.SubjPlanGetByID:                  srv.handleGetPlanByID(),
+			cent.SubjPlanGetByName:                srv.handleGetPlanByName(),
+			cent.SubjPlanGetByProviderID:          srv.handleGetPlanByProviderID(),
+			cent.SubjPlanGetBySubscriptionID:      srv.handleGetPlanBySubscriptionID(),
+			cent.SubjPlanList:                     srv.handleListPlans(),
+			cent.SubjPlanListActive:               srv.handleListActivePlans(),
+			cent.SubjPlanListByUsername:           srv.handleGetPlansByUsername(),
+			cent.SubjPlanRemoveByProviderID:       srv.handleRemovePlanByProviderID(),
+			cent.SubjPriceAdd:                     srv.handleAddPrice(),
+			cent.SubjPriceGetByID:                 srv.handleGetPriceByID(),
+			cent.SubjPriceGetByProviderID:         srv.handleGetPriceByProviderID(),
+			cent.SubjPriceList:                    srv.handleListPrices(),
+			cent.SubjPriceListByPlanID:            srv.handleListPricesByPlanID(),
+			cent.SubjSubscriptionGetByID:          srv.handleGetSubscriptionByID(),
+			cent.SubjSubscriptionGetByProviderID:  srv.handleGetSubscriptionByProviderID(),
+			cent.SubjSubscriptionList:             srv.handleListSubscriptions(),
+			cent.SubjSubscriptionListByCustomerID: srv.handleListSubscriptionsByCustomerID(),
+			cent.SubjSubscriptionListByPlanID:     srv.handleListSubscriptionsByPlanID(),
+			cent.SubjSubscriptionListByUsername:   srv.handleListSubscriptionsByUsername(),
+			cent.SubjSubscriptionUserAdd:          srv.handleAddSubscriptionUser(),
+			cent.SubjSubscriptionUserCount:        srv.handleCountSubscriptionUsers(),
+			cent.SubjSubscriptionUserList:         srv.handleListSubscriptionUsers(),
+			cent.SubjSubscriptionUserRemove:       srv.handleRemoveSubscriptionUser(),
+			cent.SubjSync:                         srv.handleSync(),
 		}
 
 		var subs []*nats.Subscription

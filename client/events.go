@@ -1,4 +1,4 @@
-package client
+package cent
 
 const (
 	SubjCheckout                     = "cent.checkout"
