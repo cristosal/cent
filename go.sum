@@ -1,6 +1,10 @@
 github.com/a-h/templ v0.2.476 h1:+H4hP4CwK4kfJwXsE6kHeFWMGtcVOVoOm/I64uzARBk=
 github.com/a-h/templ v0.2.476/go.mod h1:zQ95mSyadNTGHv6k5Fm+wQU8zkBMMbHCHg7eAvUZKNM=
 github.com/cpuguy83/go-md2man/v2 v2.0.3/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
+github.com/cristosal/orm v0.0.4-beta h1:i+gOaQoblD6UGNhE40JigBO0yJ3lZvDIxiTUojPH3vw=
+github.com/cristosal/orm v0.0.4-beta/go.mod h1:nGvMqBxHKOMc+i/09bRzPc55OxNS4k6mnaaO4Bx/jKw=
+github.com/cristosal/pay v0.0.1-beta h1:j/Cha44h4Uih6xrHA24pXk5q8C7abRn6JfDNKViusyo=
+github.com/cristosal/pay v0.0.1-beta/go.mod h1:ycM+maHS6zzKjqJOOKlpRSllKEPyBNnWBrMSlUIIJO4=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
