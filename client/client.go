@@ -27,12 +27,12 @@ func (c *Client) AddCustomer(cust *pay.Customer) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.request("cent.customer.add", data)
+	_, err = c.request(SubjCustomerAdd, data)
 	return err
 }
 
 func (c *Client) GetCustomerByEmail(email string) (*pay.Customer, error) {
-	data, err := c.request("cent.customer.get.email", []byte(email))
+	data, err := c.request(SubjCustomerGetByEmail, []byte(email))
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (c *Client) GetCustomerByEmail(email string) (*pay.Customer, error) {
 
 func (c *Client) GetCustomerByID(id int64) (*pay.Customer, error) {
 	str := strconv.FormatInt(id, 10)
-	data, err := c.request("cent.customer.get.id", []byte(str))
+	data, err := c.request(SubjCustomerGetByID, []byte(str))
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (c *Client) GetCustomerByID(id int64) (*pay.Customer, error) {
 }
 
 func (c *Client) GetCustomerByProviderID(providerID string) (*pay.Customer, error) {
-	data, err := c.request("cent.customer.get.provider_id", []byte(providerID))
+	data, err := c.request(SubjCustomerGetByProviderID, []byte(providerID))
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (c *Client) GetCustomerByProviderID(providerID string) (*pay.Customer, erro
 }
 
 func (c *Client) ListCustomers() ([]pay.Customer, error) {
-	data, err := c.request("cent.customer.list", nil)
+	data, err := c.request(SubjCustomerList, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (c *Client) ListCustomers() ([]pay.Customer, error) {
 }
 
 func (c *Client) RemoveCustomerByProviderID(providerID string) error {
-	_, err := c.request("cent.customer.remove.provider_id", []byte(providerID))
+	_, err := c.request(SubjCustomerRemoveByProviderID, []byte(providerID))
 	return err
 }
 
@@ -99,18 +99,18 @@ func (c *Client) AddPlan(p *pay.Plan) error {
 		return err
 	}
 
-	_, err = c.request("cent.plan.add", data)
+	_, err = c.request(SubjPlanAdd, data)
 	return err
 }
 
 func (c *Client) RemovePlanByProviderID(providerID string) error {
-	_, err := c.request("cent.plan.remove.provider_id", []byte(providerID))
+	_, err := c.request(SubjPlanRemoveByProviderID, []byte(providerID))
 	return err
 }
 
 func (c *Client) GetPlanByID(id int64) (*pay.Plan, error) {
 	str := strconv.FormatInt(id, 10)
-	data, err := c.request("cent.plan.get.id", []byte(str))
+	data, err := c.request(SubjPlanGetByID, []byte(str))
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (c *Client) GetPlanByID(id int64) (*pay.Plan, error) {
 
 func (c *Client) GetPlanBySubscriptionID(id int64) (*pay.Plan, error) {
 	str := strconv.FormatInt(id, 10)
-	data, err := c.request("cent.plan.get.subscription_id", []byte(str))
+	data, err := c.request(SubjPlanGetBySubscriptionID, []byte(str))
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (c *Client) GetPlanBySubscriptionID(id int64) (*pay.Plan, error) {
 }
 
 func (c *Client) GetPlanByName(name string) (*pay.Plan, error) {
-	data, err := c.request("cent.plan.get.name", []byte(name))
+	data, err := c.request(SubjPlanGetByName, []byte(name))
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func (c *Client) GetPlanByName(name string) (*pay.Plan, error) {
 }
 
 func (c *Client) GetPlanByProviderID(providerID string) (*pay.Plan, error) {
-	data, err := c.request("cent.plan.get.provider_id", []byte(providerID))
+	data, err := c.request(SubjPlanGetByProviderID, []byte(providerID))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (c *Client) GetPlanByProviderID(providerID string) (*pay.Plan, error) {
 }
 
 func (c *Client) ListPlans() ([]pay.Plan, error) {
-	data, err := c.request("cent.plan.list", nil)
+	data, err := c.request(SubjPlanList, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func (c *Client) ListPlans() ([]pay.Plan, error) {
 }
 
 func (c *Client) ListActivePlans() ([]pay.Plan, error) {
-	data, err := c.request("cent.plan.list.active", nil)
+	data, err := c.request(SubjPlanListActive, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (c *Client) ListActivePlans() ([]pay.Plan, error) {
 }
 
 func (c *Client) ListPlansByUsername(username string) ([]pay.Plan, error) {
-	data, err := c.request("cent.plan.list.username", []byte(username))
+	data, err := c.request(SubjPlanListByUsername, []byte(username))
 	if err != nil {
 		return nil, err
 	}
@@ -202,12 +202,12 @@ func (c *Client) AddPrice(p *pay.Price) error {
 		return err
 	}
 
-	_, err = c.request("cent.price.add", data)
+	_, err = c.request(SubjPriceAdd, data)
 	return err
 }
 
 func (c *Client) ListPrices() ([]pay.Price, error) {
-	data, err := c.request("cent.price.list", nil)
+	data, err := c.request(SubjPriceList, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func (c *Client) ListPrices() ([]pay.Price, error) {
 
 func (c *Client) ListPricesByPlanID(id int64) ([]pay.Price, error) {
 	str := strconv.FormatInt(id, 10)
-	data, err := c.request("cent.price.list.plan_id", []byte(str))
+	data, err := c.request(SubjPriceListByPlanID, []byte(str))
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +235,7 @@ func (c *Client) ListPricesByPlanID(id int64) ([]pay.Price, error) {
 
 func (c *Client) GetPriceByID(id int64) (*pay.Price, error) {
 	str := strconv.FormatInt(id, 10)
-	data, err := c.request("cent.price.get.id", []byte(str))
+	data, err := c.request(SubjPriceGetByID, []byte(str))
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +248,7 @@ func (c *Client) GetPriceByID(id int64) (*pay.Price, error) {
 }
 
 func (c *Client) GetPriceByProviderID(id string) (*pay.Price, error) {
-	data, err := c.request("cent.price.get.provider_id", []byte(id))
+	data, err := c.request(SubjPriceGetByProviderID, []byte(id))
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +279,7 @@ func (c *Client) request(subj string, req []byte) ([]byte, error) {
 }
 
 func (c *Client) ListSubscriptions() ([]pay.Subscription, error) {
-	data, err := c.request("cent.subscription.list", nil)
+	data, err := c.request(SubjSubscriptionList, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +291,7 @@ func (c *Client) ListSubscriptions() ([]pay.Subscription, error) {
 }
 
 func (c *Client) ListSubscriptionsByUsername(username string) ([]pay.Subscription, error) {
-	data, err := c.request("cent.subscription.list.username", []byte(username))
+	data, err := c.request(SubjSubscriptionListByUsername, []byte(username))
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +304,7 @@ func (c *Client) ListSubscriptionsByUsername(username string) ([]pay.Subscriptio
 
 func (c *Client) ListSubscriptionsByPlanID(planID int64) ([]pay.Subscription, error) {
 	id := strconv.FormatInt(planID, 10)
-	data, err := c.request("cent.subscription.list.plan_id", []byte(id))
+	data, err := c.request(SubjSubscriptionListByPlanID, []byte(id))
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +317,7 @@ func (c *Client) ListSubscriptionsByPlanID(planID int64) ([]pay.Subscription, er
 
 func (c *Client) ListSubscriptionsByCustomerID(customerID int64) ([]pay.Subscription, error) {
 	id := strconv.FormatInt(customerID, 10)
-	data, err := c.request("cent.subscription.get.customer_id", []byte(id))
+	data, err := c.request(SubjSubscriptionListByCustomerID, []byte(id))
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +330,7 @@ func (c *Client) ListSubscriptionsByCustomerID(customerID int64) ([]pay.Subscrip
 
 func (c *Client) GetSubscriptionByID(id int64) (*pay.Subscription, error) {
 	str := strconv.FormatInt(id, 10)
-	data, err := c.request("cent.subscription.get.id", []byte(str))
+	data, err := c.request(SubjSubscriptionGetByID, []byte(str))
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +342,7 @@ func (c *Client) GetSubscriptionByID(id int64) (*pay.Subscription, error) {
 }
 
 func (c *Client) GetSubscriptionByProviderID(providerID string) (*pay.Subscription, error) {
-	data, err := c.request("cent.subscription.get.provider_id", []byte(providerID))
+	data, err := c.request(SubjSubscriptionGetByProviderID, []byte(providerID))
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +359,7 @@ func (c *Client) AddSubscriptionUser(su *pay.SubscriptionUser) error {
 		return err
 	}
 
-	_, err = c.request("cent.subscription.user.add", data)
+	_, err = c.request(SubjSubscriptionUserAdd, data)
 	return err
 }
 
@@ -369,13 +369,13 @@ func (c *Client) RemoveSubscriptionUser(su *pay.SubscriptionUser) error {
 		return err
 	}
 
-	_, err = c.request("cent.subscription.user.remove", data)
+	_, err = c.request(SubjSubscriptionUserRemove, data)
 	return err
 }
 
 func (c *Client) ListSubscriptionUsers(subID int64) ([]string, error) {
 	id := strconv.FormatInt(subID, 10)
-	data, err := c.request("cent.subscription.user.list", []byte(id))
+	data, err := c.request(SubjSubscriptionUserList, []byte(id))
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +388,7 @@ func (c *Client) ListSubscriptionUsers(subID int64) ([]string, error) {
 
 func (c *Client) CountSubscriptionUsers(subID int64) (int64, error) {
 	id := strconv.FormatInt(subID, 10)
-	data, err := c.request("cent.subscription.user.count", []byte(id))
+	data, err := c.request(SubjSubscriptionUserCount, []byte(id))
 	if err != nil {
 		return 0, err
 	}
@@ -397,7 +397,7 @@ func (c *Client) CountSubscriptionUsers(subID int64) (int64, error) {
 }
 
 func (c *Client) Sync() error {
-	_, err := c.request("cent.sync", nil)
+	_, err := c.request(SubjSync, nil)
 	return err
 }
 
@@ -406,7 +406,8 @@ func (c *Client) Checkout(req *pay.CheckoutRequest) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	data, err = c.request("cent.checkout", data)
+
+	data, err = c.request(SubjCheckout, data)
 	if err != nil {
 		return "", err
 	}
