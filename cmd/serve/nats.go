@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/cristosal/cent/client"
 	"github.com/cristosal/pay"
 	"github.com/nats-io/nats.go"
 )
@@ -73,18 +74,35 @@ func (ns *natsServer) attachProviderEvents() {
 	}
 
 	p := ns.provider
-	p.OnCustomerAdded(func(c *pay.Customer) { pub("cent.customer.added", c) })
-	p.OnCustomerRemoved(func(c *pay.Customer) { pub("cent.customer.removed", c) })
-	p.OnCustomerUpdated(func(_, c2 *pay.Customer) { pub("cent.customer.updated", c2) })
-	p.OnSubscriptionAdded(func(s *pay.Subscription) { pub("cent.subscription.added", s) })
-	p.OnSubscriptionRemoved(func(s *pay.Subscription) { pub("cent.subscription.removed", s) })
-	p.OnSubscriptionUpdated(func(_, s2 *pay.Subscription) { pub("cent.subscription.updated", s2) })
-	p.OnPlanAdded(func(p *pay.Plan) { pub("cent.plan.added", p) })
-	p.OnPlanRemoved(func(p *pay.Plan) { pub("cent.plan.removed", p) })
-	p.OnPlanUpdated(func(_ *pay.Plan, p2 *pay.Plan) { pub("cent.plan.updated", p2) })
-	p.OnPriceAdded(func(p *pay.Price) { pub("cent.price.added", p) })
-	p.OnPriceRemoved(func(p *pay.Price) { pub("cent.price.removed", p) })
-	p.OnPriceUpdated(func(_ *pay.Price, p2 *pay.Price) { pub("cent.price.updated", p2) })
+	p.OnCustomerAdded(func(c *pay.Customer) { pub(client.SubjCustomerAdded, c) })
+	p.OnCustomerRemoved(func(c *pay.Customer) { pub(client.SubjCustomerRemoved, c) })
+	p.OnCustomerUpdated(func(_, c2 *pay.Customer) { pub(client.SubjCustomerUpdated, c2) })
+
+	p.OnSubscriptionAdded(func(s *pay.Subscription) {
+		pub(client.SubjSubscriptionAdded, s)
+		pub(client.SubjSubscriptionActivated, s)
+	})
+
+	p.OnSubscriptionRemoved(func(s *pay.Subscription) {
+		pub(client.SubjSubscriptionRemoved, s)
+		pub(client.SubjSubscriptionDeactivated, s)
+	})
+
+	p.OnSubscriptionUpdated(func(s1, s2 *pay.Subscription) {
+		pub(client.SubjSubscriptionUpdated, s2)
+		if s1.Active && !s2.Active {
+			pub(client.SubjSubscriptionDeactivated, s2)
+		} else if !s1.Active && s2.Active {
+			pub(client.SubjSubscriptionActivated, s2)
+		}
+	})
+
+	p.OnPlanAdded(func(p *pay.Plan) { pub(client.SubjPlanAdded, p) })
+	p.OnPlanRemoved(func(p *pay.Plan) { pub(client.SubjPlanRemoved, p) })
+	p.OnPlanUpdated(func(_ *pay.Plan, p2 *pay.Plan) { pub(client.SubjPlanUpdated, p2) })
+	p.OnPriceAdded(func(p *pay.Price) { pub(client.SubjPriceAdded, p) })
+	p.OnPriceRemoved(func(p *pay.Price) { pub(client.SubjPriceRemoved, p) })
+	p.OnPriceUpdated(func(_ *pay.Price, p2 *pay.Price) { pub(client.SubjPriceUpdated, p2) })
 }
 
 func (s *natsServer) handleAddCustomer() natsHandler {
@@ -95,16 +113,6 @@ func (s *natsServer) handleAddCustomer() natsHandler {
 		}
 
 		if err := s.provider.AddCustomer(&c); err != nil {
-			return err
-		}
-
-		return s.reply(msg, nil)
-	}
-}
-
-func (s *natsServer) handleRemoveCustomerByID() natsHandler {
-	return func(msg *nats.Msg) error {
-		if err := s.provider.RemoveCustomerByProviderID(string(msg.Data)); err != nil {
 			return err
 		}
 
