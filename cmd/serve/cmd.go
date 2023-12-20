@@ -135,7 +135,7 @@ var Cmd = &cobra.Command{
 
 func init() {
 	Cmd.PersistentFlags().StringVarP(&natsURL, "nats", "", nats.DefaultURL, "NATS connection url")
-	Cmd.PersistentFlags().StringVarP(&natsURL, "pg", "", "", "Postgres connection string")
+	Cmd.PersistentFlags().StringVarP(&pgConnectionString, "pg", "", "", "Postgres connection string")
 	Cmd.PersistentFlags().StringVarP(&stripeApiKey, "stripe-api-key", "", "", "Stripe api key from stripe account")
 	Cmd.PersistentFlags().StringVarP(&stripeWebhookSecret, "stripe-webhook-secret", "", "", "Stripe webhook secret for verifying webhook post requests")
 	Cmd.PersistentFlags().StringVarP(&addr, "addr", "", "127.0.0.1:8080", "HTTP server address")
