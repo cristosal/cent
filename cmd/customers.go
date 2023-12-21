@@ -103,18 +103,55 @@ var (
 			return client.RemoveCustomerByProviderID(c.ProviderID)
 		},
 	}
+
+	updateCustomerCmd = &cobra.Command{
+		Use:     "update",
+		Aliases: []string{"u"},
+		Short:   "updates a customer in the provider by given provider-id",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cl, err := getClient()
+			if err != nil {
+				return err
+			}
+
+			// we do a lookup on the customer by provider id
+			cust, err := cl.GetCustomerByProviderID(c.ProviderID)
+			if err != nil {
+				return err
+			}
+
+			if c.Name != "" {
+				cust.Name = c.Name
+			}
+
+			if c.Email != "" {
+				cust.Email = c.Email
+			}
+
+			return cl.UpdateCustomer(cust)
+		},
+	}
 )
 
 func init() {
 	addCustomerFlags(addCustomerCmd)
 	getCustomerFlags(getCustomerCmd)
+	updateCustomerFlags(updateCustomerCmd)
 
 	removeCustomerCmd.Flags().StringVar(&c.ProviderID, "provider-id", "", "remove by provider id")
 	removeCustomerCmd.MarkFlagRequired("provider-id")
 
 	CustomersCmd.PersistentFlags().DurationVar(&clientTimeout, "timeout", time.Second*10, "timeout for request")
 	CustomersCmd.PersistentFlags().StringVar(&natsURL, "nats", nats.DefaultURL, "nats connection url")
-	CustomersCmd.AddCommand(addCustomerCmd, listCustomersCmd, removeCustomerCmd, getCustomerCmd)
+	CustomersCmd.AddCommand(addCustomerCmd, listCustomersCmd, removeCustomerCmd, getCustomerCmd, updateCustomerCmd)
+}
+
+func updateCustomerFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&c.Email, "email", "", "customer email")
+	cmd.Flags().StringVar(&c.Name, "name", "", "customer name")
+	cmd.Flags().StringVar(&c.ProviderID, "provider-id", "", "customer provider id")
+	cmd.MarkFlagRequired("provider-id")
+	cmd.MarkFlagsOneRequired("name", "email")
 }
 
 func getCustomerFlags(cmd *cobra.Command) {

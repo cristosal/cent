@@ -105,6 +105,7 @@ func (ns *natsServer) attachProviderEvents() {
 	p.OnPriceUpdated(func(_ *pay.Price, p2 *pay.Price) { pub(cent.SubjPriceUpdated, p2) })
 }
 
+// ---------------------------------------------------
 func (s *natsServer) handleAddCustomer() natsHandler {
 	return func(msg *nats.Msg) error {
 		var c pay.Customer
@@ -120,24 +121,14 @@ func (s *natsServer) handleAddCustomer() natsHandler {
 	}
 }
 
-func (s *natsServer) handleRemoveCustomerByProviderID() natsHandler {
+func (s *natsServer) handleGetCustomerByEmail() natsHandler {
 	return func(msg *nats.Msg) error {
-		if err := s.provider.RemoveCustomerByProviderID(string(msg.Data)); err != nil {
-			return err
-		}
-
-		return s.reply(msg, nil)
-	}
-}
-
-func (s *natsServer) handleListCustomers() natsHandler {
-	return func(msg *nats.Msg) error {
-		customers, err := s.provider.ListAllCustomers()
+		c, err := s.provider.GetCustomerByEmail(string(msg.Data))
 		if err != nil {
 			return err
 		}
 
-		return s.reply(msg, customers)
+		return s.reply(msg, c)
 	}
 }
 
@@ -157,17 +148,6 @@ func (s *natsServer) handleGetCustomerByID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetCustomerByEmail() natsHandler {
-	return func(msg *nats.Msg) error {
-		c, err := s.provider.GetCustomerByEmail(string(msg.Data))
-		if err != nil {
-			return err
-		}
-
-		return s.reply(msg, c)
-	}
-}
-
 func (s *natsServer) handleGetCustomerByProvider() natsHandler {
 	return func(msg *nats.Msg) error {
 		c, err := s.provider.GetCustomerByProvider(pay.ProviderStripe, string(msg.Data))
@@ -179,6 +159,43 @@ func (s *natsServer) handleGetCustomerByProvider() natsHandler {
 	}
 }
 
+func (s *natsServer) handleListCustomers() natsHandler {
+	return func(msg *nats.Msg) error {
+		customers, err := s.provider.ListAllCustomers()
+		if err != nil {
+			return err
+		}
+
+		return s.reply(msg, customers)
+	}
+}
+
+func (s *natsServer) handleRemoveCustomerByProviderID() natsHandler {
+	return func(msg *nats.Msg) error {
+		if err := s.provider.RemoveCustomerByProviderID(string(msg.Data)); err != nil {
+			return err
+		}
+
+		return s.reply(msg, nil)
+	}
+}
+
+func (s *natsServer) handleUpdateCustomer() natsHandler {
+	return func(msg *nats.Msg) error {
+		var cust pay.Customer
+		if err := json.Unmarshal(msg.Data, &cust); err != nil {
+			return ErrBadRequest
+		}
+
+		if err := s.provider.UpdateCustomer(&cust); err != nil {
+			return err
+		}
+
+		return s.reply(msg, &cust)
+	}
+}
+
+// ---------------------------------------------------
 func (s *natsServer) handleAddPlan() natsHandler {
 	return func(msg *nats.Msg) error {
 		var pl pay.Plan
@@ -190,6 +207,21 @@ func (s *natsServer) handleAddPlan() natsHandler {
 		}
 
 		return s.reply(msg, nil)
+	}
+}
+
+func (s *natsServer) handleUpdatePlan() natsHandler {
+	return func(msg *nats.Msg) error {
+		var p pay.Plan
+		if err := json.Unmarshal(msg.Data, &p); err != nil {
+			return ErrBadRequest
+		}
+
+		if err := s.provider.UpdatePlan(&p); err != nil {
+			return err
+		}
+
+		return s.reply(msg, &p)
 	}
 }
 

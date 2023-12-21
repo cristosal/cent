@@ -93,6 +93,15 @@ func (c *Client) RemoveCustomerByProviderID(providerID string) error {
 	return err
 }
 
+func (c *Client) UpdateCustomer(cust *pay.Customer) error {
+	data, err := json.Marshal(cust)
+	if err != nil {
+		return err
+	}
+	_, err = c.request(SubjCustomerUpdate, data)
+	return err
+}
+
 func (c *Client) AddPlan(p *pay.Plan) error {
 	data, err := json.Marshal(p)
 	if err != nil {
@@ -207,6 +216,15 @@ func (c *Client) ListPlansByUsername(username string) ([]pay.Plan, error) {
 		return nil, err
 	}
 	return plans, nil
+}
+
+func (c *Client) UpdatePlan(p *pay.Plan) error {
+	data, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+	_, err = c.request(SubjPlanUpdate, data)
+	return err
 }
 
 func (c *Client) AddPrice(p *pay.Price) error {

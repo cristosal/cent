@@ -112,9 +112,51 @@ var (
 			return pprint(plan)
 		},
 	}
+
+	updatePlanCmd = &cobra.Command{
+		Use:     "update",
+		Aliases: []string{"u"},
+		Short:   "Update plan in provider by its provider-id",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cl, err := getClient()
+			if err != nil {
+				return err
+			}
+
+			plan, err := cl.GetPlanByProviderID(pl.ProviderID)
+			if err != nil {
+				return err
+			}
+
+			if pl.Name != "" {
+				plan.Name = pl.Name
+			}
+
+			if pl.Description != "" {
+				plan.Description = pl.Description
+			}
+
+			if cmd.Flags().Changed("active") {
+				isActive, err := cmd.Flags().GetBool("active")
+				if err != nil {
+					return err
+				}
+
+				plan.Active = isActive
+			}
+
+			return cl.UpdatePlan(plan)
+		},
+	}
 )
 
 func init() {
+	updatePlanCmd.Flags().StringVar(&pl.ProviderID, "provider-id", "", "update plan by provider id")
+	updatePlanCmd.Flags().StringVar(&pl.Name, "name", "", "plan name")
+	updatePlanCmd.Flags().StringVar(&pl.Description, "desc", "", "plan description")
+	updatePlanCmd.Flags().BoolVar(&pl.Active, "active", true, "plan is active")
+	updatePlanCmd.MarkFlagRequired("provider-id")
+
 	addPlanCmd.Flags().StringVar(&pl.Name, "name", "", "plan name")
 	addPlanCmd.Flags().StringVar(&pl.Description, "desc", "", "plan description")
 	addPlanCmd.Flags().StringVar(&pl.Provider, "provider", pay.ProviderStripe, "plan provider")
@@ -136,7 +178,7 @@ func init() {
 	getPlanCmd.MarkFlagsMutuallyExclusive("id", "subscription-id", "name", "provider-id", "price-id")
 	getPlanCmd.MarkFlagsOneRequired("id", "subscription-id", "name", "provider-id", "price-id")
 
-	PlansCmd.AddCommand(addPlanCmd, removePlanCmd, listPlansCmd, getPlanCmd)
+	PlansCmd.AddCommand(addPlanCmd, removePlanCmd, listPlansCmd, getPlanCmd, updatePlanCmd)
 }
 
 func pprint(v any) error {
