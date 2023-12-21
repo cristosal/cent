@@ -17,6 +17,7 @@ const (
 	SubjPlanGetByName                = "cent.plan.get.name"
 	SubjPlanGetByProviderID          = "cent.plan.get.provider_id"
 	SubjPlanGetBySubscriptionID      = "cent.plan.get.subscription_id"
+	SubjPlanGetByPriceID             = "cent.plan.get.price_id"
 	SubjPlanList                     = "cent.plan.list"
 	SubjPlanListActive               = "cent.plan.list.active"
 	SubjPlanListByUsername           = "cent.plan.list.username"

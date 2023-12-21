@@ -91,7 +91,9 @@ var (
 				return err
 			}
 
-			if pl.ID != 0 {
+			if pr.ID != 0 {
+				plan, err = cl.GetPlanByPriceID(pr.ID)
+			} else if pl.ID != 0 {
 				plan, err = cl.GetPlanByID(pl.ID)
 			} else if sub.ID != 0 {
 				plan, err = cl.GetPlanBySubscriptionID(sub.ID)
@@ -128,10 +130,11 @@ func init() {
 
 	getPlanCmd.Flags().Int64Var(&pl.ID, "id", 0, "get plan by id")
 	getPlanCmd.Flags().Int64Var(&sub.ID, "subscription-id", 0, "get plan by subscription id")
+	getPlanCmd.Flags().Int64Var(&pr.ID, "price-id", 0, "get plan by price id")
 	getPlanCmd.Flags().StringVar(&pl.Name, "name", "", "get plan by name")
 	getPlanCmd.Flags().StringVar(&pl.ProviderID, "provider-id", "", "get plan by provider id")
-	getPlanCmd.MarkFlagsMutuallyExclusive("id", "subscription-id", "name", "provider-id")
-	getPlanCmd.MarkFlagsOneRequired("id", "subscription-id", "name", "provider-id")
+	getPlanCmd.MarkFlagsMutuallyExclusive("id", "subscription-id", "name", "provider-id", "price-id")
+	getPlanCmd.MarkFlagsOneRequired("id", "subscription-id", "name", "provider-id", "price-id")
 
 	PlansCmd.AddCommand(addPlanCmd, removePlanCmd, listPlansCmd, getPlanCmd)
 }

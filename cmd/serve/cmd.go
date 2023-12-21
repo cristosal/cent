@@ -89,6 +89,7 @@ var Cmd = &cobra.Command{
 			cent.SubjPlanAdd:                      srv.handleAddPlan(),
 			cent.SubjPlanGetByID:                  srv.handleGetPlanByID(),
 			cent.SubjPlanGetByName:                srv.handleGetPlanByName(),
+			cent.SubjPlanGetByPriceID:             srv.handleGetPlanByPriceID(),
 			cent.SubjPlanGetByProviderID:          srv.handleGetPlanByProviderID(),
 			cent.SubjPlanGetBySubscriptionID:      srv.handleGetPlanBySubscriptionID(),
 			cent.SubjPlanList:                     srv.handleListPlans(),

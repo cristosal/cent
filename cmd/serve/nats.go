@@ -88,12 +88,12 @@ func (ns *natsServer) attachProviderEvents() {
 		pub(cent.SubjSubscriptionDeactivated, s)
 	})
 
-	p.OnSubscriptionUpdated(func(s1, s2 *pay.Subscription) {
-		pub(cent.SubjSubscriptionUpdated, s2)
-		if s1.Active && !s2.Active {
-			pub(cent.SubjSubscriptionDeactivated, s2)
-		} else if !s1.Active && s2.Active {
-			pub(cent.SubjSubscriptionActivated, s2)
+	p.OnSubscriptionUpdated(func(previous, current *pay.Subscription) {
+		pub(cent.SubjSubscriptionUpdated, current)
+		if previous.Active && !current.Active {
+			pub(cent.SubjSubscriptionDeactivated, current)
+		} else if !previous.Active && current.Active {
+			pub(cent.SubjSubscriptionActivated, current)
 		}
 	})
 
@@ -201,6 +201,22 @@ func (s *natsServer) handleGetPlanByID() natsHandler {
 		}
 
 		pl, err := s.provider.GetPlanByID(id)
+		if err != nil {
+			return err
+		}
+
+		return s.reply(msg, pl)
+	}
+}
+
+func (s *natsServer) handleGetPlanByPriceID() natsHandler {
+	return func(msg *nats.Msg) error {
+		id, err := strconv.ParseInt(string(msg.Data), 10, 64)
+		if err != nil {
+			return ErrBadRequest
+		}
+
+		pl, err := s.provider.GetPlanByPriceID(id)
 		if err != nil {
 			return err
 		}

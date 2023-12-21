@@ -121,6 +121,19 @@ func (c *Client) GetPlanByID(id int64) (*pay.Plan, error) {
 	return &p, nil
 }
 
+func (c *Client) GetPlanByPriceID(id int64) (*pay.Plan, error) {
+	str := strconv.FormatInt(id, 10)
+	data, err := c.request(SubjPlanGetByPriceID, []byte(str))
+	if err != nil {
+		return nil, err
+	}
+	var p pay.Plan
+	if err := json.Unmarshal(data, &p); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
 func (c *Client) GetPlanBySubscriptionID(id int64) (*pay.Plan, error) {
 	str := strconv.FormatInt(id, 10)
 	data, err := c.request(SubjPlanGetBySubscriptionID, []byte(str))
