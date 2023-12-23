@@ -46,8 +46,10 @@ const (
 	SubjSubscriptionRemoved          = "cent.subscription.removed"
 	SubjSubscriptionUpdated          = "cent.subscription.updated"
 	SubjSubscriptionUserAdd          = "cent.subscription.user.add"
+	SubjSubscriptionUserAdded        = "cent.subscription.user.added"
 	SubjSubscriptionUserCount        = "cent.subscription.user.count"
 	SubjSubscriptionUserList         = "cent.subscription.user.list"
 	SubjSubscriptionUserRemove       = "cent.subscription.user.remove"
+	SubjSubscriptionUserRemoved      = "cent.subscription.user.removed"
 	SubjSync                         = "cent.sync"
 )
