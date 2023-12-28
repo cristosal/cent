@@ -3,8 +3,8 @@ github.com/a-h/templ v0.2.476/go.mod h1:zQ95mSyadNTGHv6k5Fm+wQU8zkBMMbHCHg7eAvUZ
 github.com/cpuguy83/go-md2man/v2 v2.0.3/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/cristosal/orm v0.0.4-beta h1:i+gOaQoblD6UGNhE40JigBO0yJ3lZvDIxiTUojPH3vw=
 github.com/cristosal/orm v0.0.4-beta/go.mod h1:nGvMqBxHKOMc+i/09bRzPc55OxNS4k6mnaaO4Bx/jKw=
-github.com/cristosal/pay v0.0.2-beta.0.20231221212354-5f9f0fe9c8c7 h1:4YtUIyzujkjl5w9uVmLoJeaEH7od/IHJo0vhO2ybMrg=
-github.com/cristosal/pay v0.0.2-beta.0.20231221212354-5f9f0fe9c8c7/go.mod h1:ycM+maHS6zzKjqJOOKlpRSllKEPyBNnWBrMSlUIIJO4=
+github.com/cristosal/cent/pay v0.0.2-beta.0.20231221212354-5f9f0fe9c8c7 h1:4YtUIyzujkjl5w9uVmLoJeaEH7od/IHJo0vhO2ybMrg=
+github.com/cristosal/cent/pay v0.0.2-beta.0.20231221212354-5f9f0fe9c8c7/go.mod h1:ycM+maHS6zzKjqJOOKlpRSllKEPyBNnWBrMSlUIIJO4=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

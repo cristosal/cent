@@ -1,34 +1,37 @@
-package serve
+package cent
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 
-	cent "github.com/cristosal/cent/client"
-	"github.com/cristosal/pay"
+	"github.com/cristosal/cent/pay"
 	"github.com/nats-io/nats.go"
 )
 
 var ErrBadRequest = errors.New("bad request")
 
-type natsServer struct {
+type Server struct {
 	nc       *nats.Conn
 	js       nats.JetStreamContext
 	provider *pay.StripeProvider
-	queue    string
+	cfg      *Config
 }
 
-type natsServerConfig struct {
-	NatsURL  string
-	Queue    string
-	Provider *pay.StripeProvider
+type Config struct {
+	NatsURL         string
+	Queue           string
+	WebhookEndpoint string
+	EnableWebUI     bool
+	Provider        *pay.StripeProvider
+	HttpAddr        string
 }
 
-func newNatsServer(cfg *natsServerConfig) (*natsServer, error) {
-	if cfg.Provider == nil {
-		return nil, fmt.Errorf("provider is required")
+func (cfg *Config) setDefaults() {
+	if cfg.HttpAddr == "" {
+		cfg.HttpAddr = "127.0.0.1:8080"
 	}
 
 	if cfg.Queue == "" {
@@ -39,29 +42,106 @@ func newNatsServer(cfg *natsServerConfig) (*natsServer, error) {
 		cfg.NatsURL = nats.DefaultURL
 	}
 
-	nc, err := nats.Connect(cfg.NatsURL)
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to nats: %w", err)
+	if cfg.WebhookEndpoint == "" {
+		cfg.WebhookEndpoint = "/webhook"
 	}
+}
+
+func (s *Server) Listen() error {
+	if s.cfg.Provider == nil {
+		return fmt.Errorf("provider is required")
+	}
+
+	nc, err := nats.Connect(s.cfg.NatsURL)
+	if err != nil {
+		return fmt.Errorf("error connecting to nats: %w", err)
+	}
+	s.nc = nc
 
 	js, err := nc.JetStream()
 	if err != nil {
-		return nil, fmt.Errorf("error initializing jet stream: %w", err)
+		return fmt.Errorf("error initializing jet stream: %w", err)
 	}
 
-	p := cfg.Provider
+	s.js = js
 
-	srv := natsServer{
-		nc:       nc,
-		js:       js,
-		provider: p,
+	s.forwardProviderEvents()
+
+	if err := s.registerNATSHandlers(); err != nil {
+		return err
 	}
 
-	srv.attachProviderEvents()
-	return &srv, nil
+	s.registerHTTPHandlers()
+	return http.ListenAndServe(s.cfg.HttpAddr, nil)
 }
 
-func (ns *natsServer) attachProviderEvents() {
+func New(cfg *Config) *Server {
+	cfg.setDefaults()
+	srv := Server{
+		provider: cfg.Provider,
+		cfg:      cfg,
+	}
+
+	return &srv
+}
+
+func (s *Server) registerHTTPHandlers() {
+	http.HandleFunc(s.cfg.WebhookEndpoint, s.cfg.Provider.Webhook())
+	if s.cfg.EnableWebUI {
+		handleWebUI(s.cfg.Provider, s.cfg.HttpAddr)
+	}
+}
+
+func (s *Server) registerNATSHandlers() error {
+	submap := map[string]natsHandler{
+		SubjCheckout:                     s.handleCheckout(),
+		SubjCustomerAdd:                  s.handleAddCustomer(),
+		SubjCustomerGetByEmail:           s.handleGetCustomerByEmail(),
+		SubjCustomerGetByID:              s.handleGetCustomerByID(),
+		SubjCustomerGetByProviderID:      s.handleGetCustomerByProvider(),
+		SubjCustomerList:                 s.handleListCustomers(),
+		SubjCustomerRemoveByProviderID:   s.handleRemoveCustomerByProviderID(),
+		SubjCustomerUpdate:               s.handleUpdateCustomer(),
+		SubjPlanAdd:                      s.handleAddPlan(),
+		SubjPlanGetByID:                  s.handleGetPlanByID(),
+		SubjPlanGetByName:                s.handleGetPlanByName(),
+		SubjPlanGetByPriceID:             s.handleGetPlanByPriceID(),
+		SubjPlanGetByProviderID:          s.handleGetPlanByProviderID(),
+		SubjPlanGetBySubscriptionID:      s.handleGetPlanBySubscriptionID(),
+		SubjPlanList:                     s.handleListPlans(),
+		SubjPlanListActive:               s.handleListActivePlans(),
+		SubjPlanListByUsername:           s.handleGetPlansByUsername(),
+		SubjPlanRemoveByProviderID:       s.handleRemovePlanByProviderID(),
+		SubjPlanUpdate:                   s.handleUpdatePlan(),
+		SubjPriceAdd:                     s.handleAddPrice(),
+		SubjPriceGetByID:                 s.handleGetPriceByID(),
+		SubjPriceGetByProviderID:         s.handleGetPriceByProviderID(),
+		SubjPriceList:                    s.handleListPrices(),
+		SubjPriceListByPlanID:            s.handleListPricesByPlanID(),
+		SubjSubscriptionGetByID:          s.handleGetSubscriptionByID(),
+		SubjSubscriptionGetByProviderID:  s.handleGetSubscriptionByProviderID(),
+		SubjSubscriptionList:             s.handleListSubscriptions(),
+		SubjSubscriptionListByCustomerID: s.handleListSubscriptionsByCustomerID(),
+		SubjSubscriptionListByPlanID:     s.handleListSubscriptionsByPlanID(),
+		SubjSubscriptionListByUsername:   s.handleListSubscriptionsByUsername(),
+		SubjSubscriptionUserAdd:          s.handleAddSubscriptionUser(),
+		SubjSubscriptionUserCount:        s.handleCountSubscriptionUsers(),
+		SubjSubscriptionUserList:         s.handleListSubscriptionUsers(),
+		SubjSubscriptionUserRemove:       s.handleRemoveSubscriptionUser(),
+		SubjSync:                         s.handleSync(),
+	}
+
+	for k, v := range submap {
+		_, err := s.sub(k, v)
+		if err != nil {
+			return fmt.Errorf("error subscribing to %s: %w", k, err)
+		}
+	}
+
+	return nil
+}
+
+func (ns *Server) forwardProviderEvents() {
 	pub := func(subj string, v any) error {
 		data, err := json.Marshal(v)
 		if err != nil {
@@ -75,69 +155,69 @@ func (ns *natsServer) attachProviderEvents() {
 
 	p := ns.provider
 	p.OnCustomerAdded(func(c *pay.Customer) {
-		pub(cent.SubjCustomerAdded, c)
+		pub(SubjCustomerAdded, c)
 	})
 
 	p.OnCustomerRemoved(func(c *pay.Customer) {
-		pub(cent.SubjCustomerRemoved, c)
+		pub(SubjCustomerRemoved, c)
 	})
 
 	p.OnCustomerUpdated(func(_, c2 *pay.Customer) {
-		pub(cent.SubjCustomerUpdated, c2)
+		pub(SubjCustomerUpdated, c2)
 	})
 
 	p.OnSubscriptionAdded(func(s *pay.Subscription) {
-		pub(cent.SubjSubscriptionAdded, s)
-		pub(cent.SubjSubscriptionActivated, s)
+		pub(SubjSubscriptionAdded, s)
+		pub(SubjSubscriptionActivated, s)
 	})
 
 	p.OnSubscriptionRemoved(func(s *pay.Subscription) {
-		pub(cent.SubjSubscriptionRemoved, s)
-		pub(cent.SubjSubscriptionDeactivated, s)
+		pub(SubjSubscriptionRemoved, s)
+		pub(SubjSubscriptionDeactivated, s)
 	})
 
 	p.OnSubscriptionUpdated(func(previous, current *pay.Subscription) {
-		pub(cent.SubjSubscriptionUpdated, current)
+		pub(SubjSubscriptionUpdated, current)
 		if previous.Active && !current.Active {
-			pub(cent.SubjSubscriptionDeactivated, current)
+			pub(SubjSubscriptionDeactivated, current)
 		} else if !previous.Active && current.Active {
-			pub(cent.SubjSubscriptionActivated, current)
+			pub(SubjSubscriptionActivated, current)
 		}
 	})
 
 	p.OnPlanAdded(func(p *pay.Plan) {
-		pub(cent.SubjPlanAdded, p)
+		pub(SubjPlanAdded, p)
 	})
 
 	p.OnPlanRemoved(func(p *pay.Plan) {
-		pub(cent.SubjPlanRemoved, p)
+		pub(SubjPlanRemoved, p)
 	})
 
 	p.OnPlanUpdated(func(_ *pay.Plan, p2 *pay.Plan) {
-		pub(cent.SubjPlanUpdated, p2)
+		pub(SubjPlanUpdated, p2)
 	})
 
 	p.OnPriceAdded(func(p *pay.Price) {
-		pub(cent.SubjPriceAdded, p)
+		pub(SubjPriceAdded, p)
 	})
 
 	p.OnPriceRemoved(func(p *pay.Price) {
-		pub(cent.SubjPriceRemoved, p)
+		pub(SubjPriceRemoved, p)
 	})
 
 	p.OnPriceUpdated(func(_ *pay.Price, p2 *pay.Price) {
-		pub(cent.SubjPriceUpdated, p2)
+		pub(SubjPriceUpdated, p2)
 	})
 
 	p.OnSeatAdded(func(s1 *pay.Subscription, username string) {
-		pub(cent.SubjSubscriptionUserAdded, pay.SubscriptionUser{
+		pub(SubjSubscriptionUserAdded, pay.SubscriptionUser{
 			SubscriptionID: s1.ID,
 			Username:       username,
 		})
 	})
 
 	p.OnSeatRemoved(func(s1 *pay.Subscription, username string) {
-		pub(cent.SubjSubscriptionUserRemoved, pay.SubscriptionUser{
+		pub(SubjSubscriptionUserRemoved, pay.SubscriptionUser{
 			SubscriptionID: s1.ID,
 			Username:       username,
 		})
@@ -145,7 +225,7 @@ func (ns *natsServer) attachProviderEvents() {
 }
 
 // ---------------------------------------------------
-func (s *natsServer) handleAddCustomer() natsHandler {
+func (s *Server) handleAddCustomer() natsHandler {
 	return func(msg *nats.Msg) error {
 		var c pay.Customer
 		if err := json.Unmarshal(msg.Data, &c); err != nil {
@@ -160,7 +240,7 @@ func (s *natsServer) handleAddCustomer() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetCustomerByEmail() natsHandler {
+func (s *Server) handleGetCustomerByEmail() natsHandler {
 	return func(msg *nats.Msg) error {
 		c, err := s.provider.GetCustomerByEmail(string(msg.Data))
 		if err != nil {
@@ -171,7 +251,7 @@ func (s *natsServer) handleGetCustomerByEmail() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetCustomerByID() natsHandler {
+func (s *Server) handleGetCustomerByID() natsHandler {
 	return func(msg *nats.Msg) error {
 		id, err := strconv.ParseInt(string(msg.Data), 10, 64)
 		if err != nil {
@@ -187,7 +267,7 @@ func (s *natsServer) handleGetCustomerByID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetCustomerByProvider() natsHandler {
+func (s *Server) handleGetCustomerByProvider() natsHandler {
 	return func(msg *nats.Msg) error {
 		c, err := s.provider.GetCustomerByProvider(pay.ProviderStripe, string(msg.Data))
 		if err != nil {
@@ -198,7 +278,7 @@ func (s *natsServer) handleGetCustomerByProvider() natsHandler {
 	}
 }
 
-func (s *natsServer) handleListCustomers() natsHandler {
+func (s *Server) handleListCustomers() natsHandler {
 	return func(msg *nats.Msg) error {
 		customers, err := s.provider.ListAllCustomers()
 		if err != nil {
@@ -209,7 +289,7 @@ func (s *natsServer) handleListCustomers() natsHandler {
 	}
 }
 
-func (s *natsServer) handleRemoveCustomerByProviderID() natsHandler {
+func (s *Server) handleRemoveCustomerByProviderID() natsHandler {
 	return func(msg *nats.Msg) error {
 		if err := s.provider.RemoveCustomerByProviderID(string(msg.Data)); err != nil {
 			return err
@@ -219,7 +299,7 @@ func (s *natsServer) handleRemoveCustomerByProviderID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleUpdateCustomer() natsHandler {
+func (s *Server) handleUpdateCustomer() natsHandler {
 	return func(msg *nats.Msg) error {
 		var cust pay.Customer
 		if err := json.Unmarshal(msg.Data, &cust); err != nil {
@@ -235,7 +315,7 @@ func (s *natsServer) handleUpdateCustomer() natsHandler {
 }
 
 // ---------------------------------------------------
-func (s *natsServer) handleAddPlan() natsHandler {
+func (s *Server) handleAddPlan() natsHandler {
 	return func(msg *nats.Msg) error {
 		var pl pay.Plan
 		if err := json.Unmarshal(msg.Data, &pl); err != nil {
@@ -249,7 +329,7 @@ func (s *natsServer) handleAddPlan() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetPlanByID() natsHandler {
+func (s *Server) handleGetPlanByID() natsHandler {
 	return func(msg *nats.Msg) error {
 		id, err := strconv.ParseInt(string(msg.Data), 10, 64)
 		if err != nil {
@@ -265,7 +345,7 @@ func (s *natsServer) handleGetPlanByID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetPlanByPriceID() natsHandler {
+func (s *Server) handleGetPlanByPriceID() natsHandler {
 	return func(msg *nats.Msg) error {
 		id, err := strconv.ParseInt(string(msg.Data), 10, 64)
 		if err != nil {
@@ -281,7 +361,7 @@ func (s *natsServer) handleGetPlanByPriceID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetPlanBySubscriptionID() natsHandler {
+func (s *Server) handleGetPlanBySubscriptionID() natsHandler {
 	return func(msg *nats.Msg) error {
 		id, err := strconv.ParseInt(string(msg.Data), 10, 64)
 		if err != nil {
@@ -297,7 +377,7 @@ func (s *natsServer) handleGetPlanBySubscriptionID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetPlanByName() natsHandler {
+func (s *Server) handleGetPlanByName() natsHandler {
 	return func(msg *nats.Msg) error {
 		pl, err := s.provider.GetPlanByName(string(msg.Data))
 		if err != nil {
@@ -308,7 +388,7 @@ func (s *natsServer) handleGetPlanByName() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetPlanByProviderID() natsHandler {
+func (s *Server) handleGetPlanByProviderID() natsHandler {
 	return func(msg *nats.Msg) error {
 		pl, err := s.provider.GetPlanByProviderID(pay.ProviderStripe, string(msg.Data))
 		if err != nil {
@@ -319,7 +399,7 @@ func (s *natsServer) handleGetPlanByProviderID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetPlansByUsername() natsHandler {
+func (s *Server) handleGetPlansByUsername() natsHandler {
 	return func(msg *nats.Msg) error {
 		plans, err := s.provider.GetPlansByUsername(string(msg.Data))
 		if err != nil {
@@ -330,7 +410,7 @@ func (s *natsServer) handleGetPlansByUsername() natsHandler {
 	}
 }
 
-func (s *natsServer) handleListPlans() natsHandler {
+func (s *Server) handleListPlans() natsHandler {
 	return func(msg *nats.Msg) error {
 		plans, err := s.provider.ListPlans()
 		if err != nil {
@@ -341,7 +421,7 @@ func (s *natsServer) handleListPlans() natsHandler {
 	}
 }
 
-func (s *natsServer) handleListActivePlans() natsHandler {
+func (s *Server) handleListActivePlans() natsHandler {
 	return func(msg *nats.Msg) error {
 		plans, err := s.provider.ListActivePlans()
 		if err != nil {
@@ -352,7 +432,7 @@ func (s *natsServer) handleListActivePlans() natsHandler {
 	}
 }
 
-func (s *natsServer) handleRemovePlanByProviderID() natsHandler {
+func (s *Server) handleRemovePlanByProviderID() natsHandler {
 	return func(msg *nats.Msg) error {
 		if err := s.provider.RemovePlanByProviderID(string(msg.Data)); err != nil {
 			return err
@@ -362,7 +442,7 @@ func (s *natsServer) handleRemovePlanByProviderID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleUpdatePlan() natsHandler {
+func (s *Server) handleUpdatePlan() natsHandler {
 	return func(msg *nats.Msg) error {
 		var p pay.Plan
 		if err := json.Unmarshal(msg.Data, &p); err != nil {
@@ -378,7 +458,7 @@ func (s *natsServer) handleUpdatePlan() natsHandler {
 }
 
 // ---------------------------------------------------------
-func (s *natsServer) handleListSubscriptions() natsHandler {
+func (s *Server) handleListSubscriptions() natsHandler {
 	return func(msg *nats.Msg) error {
 		subs, err := s.provider.ListAllSubscriptions()
 		if err != nil {
@@ -389,7 +469,7 @@ func (s *natsServer) handleListSubscriptions() natsHandler {
 	}
 }
 
-func (s *natsServer) handleListSubscriptionsByUsername() natsHandler {
+func (s *Server) handleListSubscriptionsByUsername() natsHandler {
 	return func(msg *nats.Msg) error {
 		subs, err := s.provider.ListSubscriptionsByUsername(string(msg.Data))
 		if err != nil {
@@ -400,7 +480,7 @@ func (s *natsServer) handleListSubscriptionsByUsername() natsHandler {
 	}
 }
 
-func (s *natsServer) handleListSubscriptionsByPlanID() natsHandler {
+func (s *Server) handleListSubscriptionsByPlanID() natsHandler {
 	return func(msg *nats.Msg) error {
 		id, err := strconv.ParseInt(string(msg.Data), 10, 64)
 		if err != nil {
@@ -416,7 +496,7 @@ func (s *natsServer) handleListSubscriptionsByPlanID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleListSubscriptionsByCustomerID() natsHandler {
+func (s *Server) handleListSubscriptionsByCustomerID() natsHandler {
 	return func(msg *nats.Msg) error {
 		id, err := strconv.ParseInt(string(msg.Data), 10, 64)
 		if err != nil {
@@ -432,7 +512,7 @@ func (s *natsServer) handleListSubscriptionsByCustomerID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetSubscriptionByProviderID() natsHandler {
+func (s *Server) handleGetSubscriptionByProviderID() natsHandler {
 	return func(msg *nats.Msg) error {
 		sub, err := s.provider.GetSubscriptionByProvider(pay.ProviderStripe, string(msg.Data))
 		if err != nil {
@@ -443,7 +523,7 @@ func (s *natsServer) handleGetSubscriptionByProviderID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetSubscriptionByID() natsHandler {
+func (s *Server) handleGetSubscriptionByID() natsHandler {
 	return func(msg *nats.Msg) error {
 		id, err := strconv.ParseInt(string(msg.Data), 10, 64)
 		if err != nil {
@@ -460,7 +540,7 @@ func (s *natsServer) handleGetSubscriptionByID() natsHandler {
 }
 
 // ------------------------------------------------------------
-func (s *natsServer) handleListPrices() natsHandler {
+func (s *Server) handleListPrices() natsHandler {
 	return func(msg *nats.Msg) error {
 		prices, err := s.provider.ListAllPrices()
 		if err != nil {
@@ -471,7 +551,7 @@ func (s *natsServer) handleListPrices() natsHandler {
 	}
 }
 
-func (s *natsServer) handleListPricesByPlanID() natsHandler {
+func (s *Server) handleListPricesByPlanID() natsHandler {
 	return func(msg *nats.Msg) error {
 		id, err := strconv.ParseInt(string(msg.Data), 10, 64)
 		if err != nil {
@@ -487,7 +567,7 @@ func (s *natsServer) handleListPricesByPlanID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetPriceByID() natsHandler {
+func (s *Server) handleGetPriceByID() natsHandler {
 	return func(msg *nats.Msg) error {
 		id, err := strconv.ParseInt(string(msg.Data), 10, 64)
 		if err != nil {
@@ -503,7 +583,7 @@ func (s *natsServer) handleGetPriceByID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleGetPriceByProviderID() natsHandler {
+func (s *Server) handleGetPriceByProviderID() natsHandler {
 	return func(msg *nats.Msg) error {
 		pr, err := s.provider.GetPriceByProvider(pay.ProviderStripe, string(msg.Data))
 		if err != nil {
@@ -514,7 +594,7 @@ func (s *natsServer) handleGetPriceByProviderID() natsHandler {
 	}
 }
 
-func (s *natsServer) handleAddPrice() natsHandler {
+func (s *Server) handleAddPrice() natsHandler {
 	return func(msg *nats.Msg) error {
 		var pr pay.Price
 		if err := json.Unmarshal(msg.Data, &pr); err != nil {
@@ -529,7 +609,7 @@ func (s *natsServer) handleAddPrice() natsHandler {
 }
 
 // -------------------------------------------------------------
-func (s *natsServer) handleAddSubscriptionUser() natsHandler {
+func (s *Server) handleAddSubscriptionUser() natsHandler {
 	return func(msg *nats.Msg) error {
 		var su pay.SubscriptionUser
 		if err := json.Unmarshal(msg.Data, &su); err != nil {
@@ -543,7 +623,7 @@ func (s *natsServer) handleAddSubscriptionUser() natsHandler {
 	}
 }
 
-func (s *natsServer) handleCountSubscriptionUsers() natsHandler {
+func (s *Server) handleCountSubscriptionUsers() natsHandler {
 	return func(msg *nats.Msg) error {
 		subID, err := strconv.ParseInt(string(msg.Data), 10, 64)
 		if err != nil {
@@ -558,7 +638,7 @@ func (s *natsServer) handleCountSubscriptionUsers() natsHandler {
 	}
 }
 
-func (s *natsServer) handleListSubscriptionUsers() natsHandler {
+func (s *Server) handleListSubscriptionUsers() natsHandler {
 	return func(msg *nats.Msg) error {
 		subID, err := strconv.ParseInt(string(msg.Data), 10, 64)
 		if err != nil {
@@ -573,7 +653,7 @@ func (s *natsServer) handleListSubscriptionUsers() natsHandler {
 	}
 }
 
-func (s *natsServer) handleRemoveSubscriptionUser() natsHandler {
+func (s *Server) handleRemoveSubscriptionUser() natsHandler {
 	return func(msg *nats.Msg) error {
 		var su pay.SubscriptionUser
 		if err := json.Unmarshal(msg.Data, &su); err != nil {
@@ -589,7 +669,7 @@ func (s *natsServer) handleRemoveSubscriptionUser() natsHandler {
 
 // ------------------------------------------------------------
 
-func (s *natsServer) handleCheckout() natsHandler {
+func (s *Server) handleCheckout() natsHandler {
 	return func(msg *nats.Msg) error {
 		var req pay.CheckoutRequest
 		if err := json.Unmarshal(msg.Data, &req); err != nil {
@@ -605,7 +685,7 @@ func (s *natsServer) handleCheckout() natsHandler {
 	}
 }
 
-func (s *natsServer) handleSync() natsHandler {
+func (s *Server) handleSync() natsHandler {
 	return func(msg *nats.Msg) error {
 		if err := s.provider.Sync(); err != nil {
 			return err
@@ -618,7 +698,7 @@ func (s *natsServer) handleSync() natsHandler {
 // ------------------------------------------------------------
 type natsHandler func(msg *nats.Msg) error
 
-func (natsServer) reply(msg *nats.Msg, v any) error {
+func (Server) reply(msg *nats.Msg, v any) error {
 	data, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -637,8 +717,8 @@ func (natsServer) reply(msg *nats.Msg, v any) error {
 	return msg.Respond(resdata)
 }
 
-func (s *natsServer) sub(subj string, h natsHandler) (*nats.Subscription, error) {
-	return s.nc.QueueSubscribe(subj, s.queue, func(msg *nats.Msg) {
+func (s *Server) sub(subj string, h natsHandler) (*nats.Subscription, error) {
+	return s.nc.QueueSubscribe(subj, s.cfg.Queue, func(msg *nats.Msg) {
 		if err := h(msg); err != nil {
 			data, err := json.Marshal(&response{
 				Success: false,

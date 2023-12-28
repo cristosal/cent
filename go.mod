@@ -3,7 +3,6 @@ module github.com/cristosal/cent
 require (
 	github.com/a-h/templ v0.2.476
 	github.com/cristosal/orm v0.0.4-beta
-	github.com/cristosal/pay v0.0.2-beta.0.20231221212354-5f9f0fe9c8c7
 	github.com/jackc/pgx/v5 v5.5.0
 	github.com/nats-io/nats.go v1.31.0
 	github.com/spf13/cobra v1.8.0

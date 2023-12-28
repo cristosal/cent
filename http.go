@@ -1,4 +1,4 @@
-package serve
+package cent
 
 import (
 	"errors"
@@ -11,13 +11,13 @@ import (
 	"github.com/cristosal/cent/templates"
 	"github.com/cristosal/orm"
 
-	"github.com/cristosal/pay"
+	"github.com/cristosal/cent/pay"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func handleFuncs(p *pay.StripeProvider) {
+func handleWebUI(p *pay.StripeProvider, addr string) {
 	http.HandleFunc("/", handleHome())
-	http.HandleFunc("/webhook", p.Webhook())
+	http.HandleFunc("/checkout", handleCheckout(p, addr))
 	http.HandleFunc("/plans", handlePlans(p))
 	http.HandleFunc("/plans/new", handlePlansNew(p))
 	http.HandleFunc("/plans/delete", handlePlansDelete(p))
@@ -31,7 +31,6 @@ func handleFuncs(p *pay.StripeProvider) {
 	http.HandleFunc("/subscriptions/users/new", handleSubscriptionsUsersNew(p))
 	http.HandleFunc("/subscriptions/users/delete", handleSubscriptionsUsersDelete(p))
 	http.HandleFunc("/events", handleWebhookEvents(p))
-	http.HandleFunc("/checkout", handleCheckout(p))
 	http.HandleFunc("/checkout/success", handleCheckoutSuccess())
 }
 
@@ -125,7 +124,7 @@ func handleCheckoutSuccess() http.HandlerFunc {
 	})
 }
 
-func handleCheckout(p *pay.StripeProvider) http.HandlerFunc {
+func handleCheckout(p *pay.StripeProvider, addr string) http.HandlerFunc {
 	return wrap(func(w http.ResponseWriter, r *http.Request) error {
 		switch r.Method {
 		case http.MethodPost:

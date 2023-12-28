@@ -3,7 +3,7 @@ package templates
 import (
 	"fmt"
 
-	"github.com/cristosal/pay"
+	"github.com/cristosal/cent/pay"
 )
 
 templ SubscriptionUsers(subID int64, usernames []string) {
@@ -203,7 +203,7 @@ templ Home() {
 	@layout("Pay") {
 		<h1>Cent</h1>
 		<hr/>
-		<a href="https://github.com/cristosal/pay">Github</a>
+		<a href="https://github.com/cristosal/cent/pay">Github</a>
 	}
 }
 
