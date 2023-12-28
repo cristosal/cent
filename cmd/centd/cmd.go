@@ -15,22 +15,64 @@ import (
 var (
 	natsURL             string
 	addr                string
-	pgConnectionString  string
+	sqlDSN              string
+	sqlDriver           string
 	stripeApiKey        string
 	stripeWebhookSecret string
+	enableWebUI         bool
+	cmd                 = &cobra.Command{
+		Use:   "centd",
+		Short: "payment microservice",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			db, err := sql.Open(sqlDriver, getConnectionString())
+			if err != nil {
+				return fmt.Errorf("error opening database: %w", err)
+			}
+
+			p := pay.NewStripeProvider(&pay.StripeConfig{
+				Repo:          pay.NewEntityRepo(db),
+				Key:           getStripeApiKey(),
+				WebhookSecret: getStripeWebhookSecret(),
+			})
+
+			if err := p.Init(); err != nil {
+				return fmt.Errorf("error initializing pay: %w", err)
+			}
+
+			fmt.Println("syncing...")
+			if err := p.Sync(); err != nil {
+				log.Fatal(fmt.Errorf("sync error: %w", err))
+			}
+
+			s := cent.New(&cent.Config{
+				NatsURL:         natsURL,
+				Provider:        p,
+				Queue:           "cent",
+				HttpAddr:        addr,
+				WebhookEndpoint: "/webhook",
+				EnableWebUI:     enableWebUI,
+			})
+
+			return s.Listen()
+		},
+	}
 )
 
-func main() {
-	if err := cmd.Execute(); err != nil {
-		os.Exit(1)
-	}
+func init() {
+	cmd.Flags().BoolVar(&enableWebUI, "web-ui", false, "Enables Web UI")
+	cmd.Flags().StringVar(&natsURL, "nats", nats.DefaultURL, "NATS connection url")
+	cmd.Flags().StringVar(&sqlDriver, "sql-driver", "pgx", "SQL Data Source Name")
+	cmd.Flags().StringVar(&sqlDSN, "sql-dsn", "", "SQL Data Source Name")
+	cmd.Flags().StringVar(&stripeApiKey, "stripe-api-key", "", "Stripe api key from stripe account")
+	cmd.Flags().StringVar(&stripeWebhookSecret, "stripe-webhook-secret", "", "Stripe webhook secret for verifying webhook post requests")
+	cmd.Flags().StringVar(&addr, "addr", "127.0.0.1:8080", "HTTP server address")
 }
 
 func getConnectionString() string {
-	if pgConnectionString == "" {
+	if sqlDSN == "" {
 		return os.Getenv("CONNECTION_STRING")
 	}
-	return pgConnectionString
+	return sqlDSN
 }
 
 func getStripeWebhookSecret() string {
@@ -47,48 +89,4 @@ func getStripeApiKey() string {
 	}
 
 	return stripeApiKey
-}
-
-var cmd = &cobra.Command{
-	Use:   "centd",
-	Short: "payment microservice",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		db, err := sql.Open("pgx", getConnectionString())
-		if err != nil {
-			return fmt.Errorf("error opening database: %w", err)
-		}
-
-		p := pay.NewStripeProvider(&pay.StripeConfig{
-			Repo:          pay.NewEntityRepo(db),
-			Key:           getStripeApiKey(),
-			WebhookSecret: getStripeWebhookSecret(),
-		})
-
-		if err := p.Init(); err != nil {
-			return fmt.Errorf("error initializing pay: %w", err)
-		}
-
-		fmt.Println("syncing...")
-		if err := p.Sync(); err != nil {
-			log.Fatal(fmt.Errorf("sync error: %w", err))
-		}
-
-		srv := cent.New(&cent.Config{
-			NatsURL:         natsURL,
-			Provider:        p,
-			Queue:           "cent",
-			HttpAddr:        addr,
-			WebhookEndpoint: "/webhook",
-		})
-
-		return srv.Listen()
-	},
-}
-
-func init() {
-	cmd.PersistentFlags().StringVarP(&natsURL, "nats", "", nats.DefaultURL, "NATS connection url")
-	cmd.PersistentFlags().StringVarP(&pgConnectionString, "pg", "", "", "Postgres connection string")
-	cmd.PersistentFlags().StringVarP(&stripeApiKey, "stripe-api-key", "", "", "Stripe api key from stripe account")
-	cmd.PersistentFlags().StringVarP(&stripeWebhookSecret, "stripe-webhook-secret", "", "", "Stripe webhook secret for verifying webhook post requests")
-	cmd.PersistentFlags().StringVarP(&addr, "addr", "", "127.0.0.1:8080", "HTTP server address")
 }
